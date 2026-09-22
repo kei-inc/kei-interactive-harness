@@ -101,6 +101,11 @@ And what the recovery path is.
 Things I know are not right and have decided to live with for now. Writing them
 down is what separates a decision from an oversight.
 
+**If this repository is public, keep entries here general.** In a private repo,
+naming the exact table and the exact hole is the useful thing to do. In a public
+one, it is a map for an attacker. Write "one table pending an RLS migration,
+tracked in issue #12" and keep the detail in the issue, in a private tracker.
+
 | Risk | Why it is acceptable today | What would change that |
 |---|---|---|
 | | | |

@@ -157,6 +157,7 @@ function init() {
   }
 
   addPackageScripts();
+  ensureGitignore();
 
   // Wire git to .husky/ without letting `husky init` write its own hook file.
   const huskyBin = path.join(CWD, 'node_modules', '.bin', 'husky');
@@ -175,6 +176,38 @@ function init() {
   console.log('  4. SUPABASE_DB_URL=... npx harness rls    audit the real perimeter');
   console.log('  5. Open in Cursor, check the rules panel shows the .mdc files, try /repair');
   console.log('\n' + c.d('  Do not run `npx husky init`; it writes a competing pre-commit hook.'));
+}
+
+/**
+ * Entries the project should never commit. Appended once, in a marked block,
+ * and only the lines not already present, so an existing .gitignore is never
+ * reordered or duplicated.
+ */
+function ensureGitignore() {
+  const gi = path.join(CWD, '.gitignore');
+  const existing = fs.existsSync(gi) ? fs.readFileSync(gi, 'utf8') : '';
+  const lines = existing.split('\n').map((l) => l.trim());
+  const want = [
+    'node_modules/',
+    '.env',
+    '.env.local',
+    '.env.*.local',
+    '.env.production',
+    '.env.development',
+    '*.harness-new',
+    'semgrep-nightly.json',
+    'outdated.json',
+    'knip.json',
+    'ratchet-trend.txt',
+  ];
+  // Treat "node_modules" and "/node_modules" as covering node_modules/.
+  const has = (w) => lines.includes(w) || lines.includes(w.replace(/\/$/, '')) || lines.includes('/' + w.replace(/\/$/, ''));
+  const missing = want.filter((w) => !has(w));
+  if (!missing.length) return;
+  const block = (existing && !existing.endsWith('\n') ? '\n' : '') +
+    '\n# kei-interactive-harness: never commit these\n' + missing.join('\n') + '\n';
+  fs.writeFileSync(gi, existing + block);
+  console.log(`  ${c.g('added')}   .gitignore entries (${missing.length})`);
 }
 
 function addPackageScripts() {
@@ -304,6 +337,23 @@ function doctor() {
   try { scripts = JSON.parse(fs.readFileSync(path.join(CWD, 'package.json'), 'utf8')).scripts || {}; } catch {}
   for (const k of ['typecheck', 'lint', 'test:unit', 'test:e2e', 'build', 'size']) {
     console.log(`    ${scripts[k] ? c.g('present') : c.d('absent ')} ${k}`);
+  }
+
+  const strays = [];
+  const walk = (d, depth) => {
+    if (depth > 4) return;
+    for (const e of safeReaddir(d)) {
+      if (e === 'node_modules' || e === '.git') continue;
+      const p = path.join(d, e);
+      let st; try { st = fs.statSync(p); } catch { continue; }
+      if (st.isDirectory()) walk(p, depth + 1);
+      else if (e.endsWith('.harness-new')) strays.push(path.relative(CWD, p));
+    }
+  };
+  walk(CWD, 0);
+  if (strays.length) {
+    console.log('\n  ' + c.y('Unmerged .harness-new files (git ignores these, so they are easy to forget):'));
+    for (const f of strays) console.log(`    ${f}`);
   }
 
   const inv = path.join(CWD, 'docs/INVARIANTS.md');
