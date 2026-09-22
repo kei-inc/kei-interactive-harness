@@ -1,0 +1,84 @@
+---
+description: Supabase. The database is the security perimeter.
+globs: **/supabase/**,**/*.sql,**/lib/supabase*,**/utils/supabase/**,**/db/**,**/actions/**,**/api/**
+alwaysApply: false
+---
+
+## The one thing to understand
+
+The anon key ships to every browser. Anyone can open devtools, copy it, and
+query the REST endpoint directly with curl. This means **row level security in
+Postgres is the security boundary of this application.** Checks in server
+components, route handlers, and middleware are conveniences on top of it. If RLS
+is wrong, none of them matter, because the attacker does not go through your app.
+
+Design every feature by asking what the RLS policy is first, and only then how
+the UI calls it.
+
+## RLS rules
+
+- Every table in the `public` schema has RLS enabled. No exceptions, including
+  lookup tables, including tables you think are not sensitive.
+- RLS is enabled **in the same migration that creates the table**, along with its
+  policies. A table that exists for one deploy without policies is a table that
+  was public for one deploy.
+- Write policies as narrowly as the feature allows. `using (true)` is the same as
+  having no RLS, so if you write it, say out loud why.
+- Separate policies per operation. A single `for all` policy usually means the
+  read rule and the write rule got conflated, and the write rule should be
+  stricter.
+- Never let `anon` write without a considered reason. If a contact form needs it,
+  scope the policy to a single table with a check constraint and a rate limit.
+- Wrap function calls in policies so they are evaluated once rather than per row:
+  `(select auth.uid()) = user_id` rather than `auth.uid() = user_id`.
+- Index every column a policy filters on. Policies run per row, so an unindexed
+  `user_id` turns every query into a sequential scan the moment the table is real.
+
+## The service role key
+
+- It bypasses RLS completely. Treat it like the root password, because it is.
+- It lives only in files that `import 'server-only'` at the top, which turns a
+  bad import into a build error rather than a silent leak.
+- Never in a client component, never in a `NEXT_PUBLIC_` variable, never in an
+  edge middleware, never in a Cloudflare Worker that is publicly reachable.
+- Reach for it only when RLS genuinely cannot express the rule, such as an admin
+  backfill. When you use it, the query must carry its own ownership filter,
+  because nothing else will.
+
+## Auth
+
+- On the server use `getUser()`, never `getSession()`. `getSession` reads the
+  cookie and trusts it. `getUser` revalidates against the auth server. A forged
+  cookie defeats the first and not the second. The harness blocks `getSession()`
+  in server code; the one legitimate exception is reading the access token to
+  forward to another service, and for that write `// @allow-getsession` with the
+  reason on the line above.
+- Derive identity from the verified user, never from an id in the request body.
+- `auth.users` stays out of the `public` schema. Keep a `profiles` table keyed by
+  `auth.uid()` and expose that instead.
+
+## Functions and views
+
+- `SECURITY DEFINER` functions bypass RLS. Use them rarely, and always with
+  `set search_path = ''` and fully qualified object names, otherwise a caller can
+  shadow the tables you reference.
+- Views run with the definer's rights unless you set `security_invoker = on`.
+  A view over an RLS-protected table without it is a hole. Always set it.
+
+## Storage
+
+- Buckets are private by default. Keep them that way and serve through signed
+  URLs with short expiry.
+- A public bucket means every object in it is readable by URL forever, including
+  after you delete the row that referenced it.
+- Storage has its own RLS policies on `storage.objects`. Write them.
+
+## Migrations
+
+- All schema change goes through `supabase/migrations`. Changes made in the
+  dashboard exist in exactly one environment and vanish from history.
+- Generate types after every migration and commit them, so drift between the
+  database and the TypeScript is visible in the diff.
+- Destructive changes go in their own migration, expanded first and contracted in
+  a later deploy.
+

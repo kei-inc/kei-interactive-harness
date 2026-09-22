@@ -1,0 +1,40 @@
+---
+description: Data access, queries, and anything that grows
+globs: **/api/**,**/server/**,**/db/**,**/models/**,**/repositories/**,**/*.sql,**/migrations/**,**/actions/**,**/trpc/**
+---
+
+You are in the part of the codebase where mistakes are expensive and slow to
+surface. Read `docs/INVARIANTS.md` sections 2, 6, and 7 before writing.
+
+## Correctness
+
+- Filter by the tenancy key in the query. Always.
+- Wrap multi-statement writes in a transaction. If two rows must agree, they must
+  be written together or not at all.
+- Writes that a client might retry need to be idempotent. Take an idempotency key
+  or use a natural unique constraint.
+
+## Shape of queries
+
+- Select the columns you need. `SELECT *` is a leak waiting for the next migration.
+- Every list is paginated, with a default limit and a hard cap. Prefer keyset
+  pagination over `OFFSET` on anything that grows.
+- No queries inside loops. If you are iterating over results and querying per
+  item, that is an N+1 and it will be fine in development and terrible in
+  production. Batch it or join it.
+- Any column used in a `where`, `join`, or `order by` on a growing table needs an
+  index. When you write such a query, say in the diff whether the index exists.
+
+## Cost
+
+- Anything that calls a paid API, sends mail, or runs a model gets a rate limit
+  and a recorded cost. Say which limit applies.
+- Long operations belong in a background job, not in a request handler. If you
+  need a job queue and there is not one, stop and ask.
+
+## Failure
+
+- Set timeouts. Assume every external call can hang.
+- Retries need backoff and a ceiling. Unbounded retry is how one slow upstream
+  becomes an outage.
+- Log the detail, return the generic message.

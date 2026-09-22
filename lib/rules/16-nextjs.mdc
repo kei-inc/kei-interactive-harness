@@ -1,0 +1,85 @@
+---
+description: Next.js App Router. Where the client/server line actually is.
+globs: **/app/**,**/src/app/**,**/middleware.ts,**/next.config.*,**/*.tsx
+alwaysApply: false
+---
+
+## Server actions are public endpoints
+
+A function marked `"use server"` compiles to a POST endpoint with a stable id.
+Anyone can call it directly with curl. It does **not** inherit the authorization
+of the page that rendered the form, and the fact that the button is hidden in the
+UI protects nothing.
+
+- Every server action begins by establishing identity, from the session, before
+  it touches anything. Do it through one helper, `requireUser()` in
+  `lib/auth.ts`, which calls `supabase.auth.getUser()`, throws or redirects when
+  there is no user, and returns the verified user. One helper means one place to
+  get it right, and the harness recognises that name (see `.harness/config.sh`
+  for the full list it accepts, and how to add another if this project uses a
+  different auth library).
+- Every server action validates its arguments with a schema. The arguments arrive
+  over the network and can be anything.
+- One action file exports only actions. Anything else exported from a
+  `"use server"` file also becomes a public endpoint.
+- If an action really is meant to be callable by anyone, write
+  `// @public-action` with the reason, so the decision is visible in the diff.
+
+## Route handlers
+
+- Public until proven otherwise. Every `route.ts` states its access level and
+  enforces it, or carries `// @public-route` with a reason.
+- Webhook handlers verify the signature before parsing the body, and they are the
+  one case where no session exists.
+- Validate `params` and `searchParams`. They come from the URL and are strings of
+  the attacker's choosing.
+
+## Middleware is not authorization
+
+Middleware runs at the edge, before your code, and has historically been
+bypassable through header manipulation. Use it for session refresh and for
+redirecting a signed-out user to the login page, which is a user experience
+concern. Never let it be the only thing standing between a request and data.
+The enforcing check belongs in the query, backed by RLS.
+
+## The serialization boundary
+
+Anything a server component passes to a client component is serialized into the
+HTML payload and is readable in view-source. Rendering only one field of an
+object does not help, because the whole object crossed the line.
+
+- Shape the data before passing it down. Pick fields explicitly.
+- Never pass a whole database row to a client component.
+- Never pass a token, a secret, or an internal identifier you would not print on
+  the page.
+
+## Caching
+
+Getting this wrong serves one customer's data to another, which is the worst bug
+in the catalogue and one that is nearly invisible in testing.
+
+- Any cache key covering user-specific data includes the user or tenant id.
+- `unstable_cache` and `revalidate` are global by default. Per-user data does not
+  belong in them unless the key carries identity.
+- Mark reviewed caching paths with `// @cache-reviewed` so the harness stops
+  asking.
+- Prefer `React.cache` for per-request memoization, which does not cross requests.
+
+## Environment variables
+
+- `NEXT_PUBLIC_` is inlined into the browser bundle at build time. It is
+  published. The anon key and the publishable Stripe key belong there. Nothing
+  else does.
+- Server variables read at module scope in a file that could be imported by a
+  client component will silently become `undefined`. Use `server-only` to make
+  that a build error.
+- Validate the environment at boot with a schema, so a missing variable fails on
+  deploy rather than on the first request that needs it.
+
+## Errors and loading
+
+- Every route segment that fetches has `loading.tsx` and `error.tsx`. A segment
+  without them shows a blank screen when something goes wrong.
+- `error.tsx` shows a generic message. Stack traces go to the logs.
+- Use `notFound()` rather than a 403 when hiding a resource the user may not see,
+  so the response does not confirm that the resource exists.

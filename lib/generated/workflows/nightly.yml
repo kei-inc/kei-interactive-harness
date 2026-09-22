@@ -1,0 +1,70 @@
+name: nightly
+
+# The deep pass. Runs while you sleep, so it can afford to be slow and thorough.
+# Failures here open an issue rather than blocking anything, because nothing
+# here should ever stand between you and a deploy at two in the afternoon.
+
+on:
+  schedule:
+    - cron: "0 7 * * 1-5"   # weekday mornings, UTC
+  workflow_dispatch:
+
+jobs:
+  deep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --prefer-offline --no-audit
+
+      - name: Full semgrep sweep
+        continue-on-error: true
+        run: |
+          pip install --quiet semgrep
+          semgrep --config "$(npx harness lib)/semgrep.yml" \
+                  --config p/owasp-top-ten \
+                  --config p/javascript \
+                  --config p/typescript \
+                  --config p/react \
+                  --json --output semgrep-nightly.json .
+
+      - name: Dependency drift
+        continue-on-error: true
+        run: npm outdated --json > outdated.json || true
+
+      - name: Dead code and unused dependencies
+        continue-on-error: true
+        run: npx knip --reporter json > knip.json || true
+
+      - name: Ratchet trend
+        run: npx harness ratchet --show | tee ratchet-trend.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nightly-reports
+          path: |
+            semgrep-nightly.json
+            outdated.json
+            knip.json
+            ratchet-trend.txt
+          retention-days: 30
+
+  # Dynamic scan against a running instance. Uncomment and point at a staging
+  # URL once you have one. This is the check that finds what static analysis
+  # cannot: missing headers, exposed endpoints, misconfigured cookies.
+  #
+  # dynamic:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: ZAP baseline scan
+  #       uses: zaproxy/action-baseline@v0.12.0
+  #       with:
+  #         target: https://staging.example.com
+  #         cmd_options: "-a"

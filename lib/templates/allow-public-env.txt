@@ -1,0 +1,16 @@
+# Client-exposed environment variables that are genuinely meant to be public.
+# One name per line. The boundary checker ignores these.
+#
+# These are the standard ones for this stack. They are designed to be shipped to
+# browsers, and the anon key in particular is safe only because row level
+# security is doing the actual work. If RLS is off, this key is a skeleton key.
+
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+NEXT_PUBLIC_POSTHOG_KEY
+NEXT_PUBLIC_SENTRY_DSN
+
+# Never add a line for anything containing SERVICE_ROLE. That key bypasses row
+# level security entirely, and no version of it belongs in a browser.

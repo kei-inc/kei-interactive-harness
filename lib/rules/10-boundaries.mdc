@@ -1,0 +1,63 @@
+---
+description: Security non-negotiables. Always applies, including during spikes.
+alwaysApply: true
+---
+
+These hold even in throwaway code, because they are the ones that are expensive
+or impossible to fix after the fact. If I ask you to break one, say so out loud
+before you do.
+
+## Secrets
+
+- Server secrets live only in server-side environment variables.
+- Any variable prefixed `NEXT_PUBLIC_`, `VITE_`, `PUBLIC_`, or `EXPO_PUBLIC_` is
+  shipped to the browser and is effectively published. Never put a service-role
+  key, API secret, signing key, or database URL behind one of those prefixes.
+- No secrets in code, comments, fixtures, seeds, test files, or commit messages.
+- When you need a new secret, add it to `.env.example` with a placeholder value
+  and tell me, rather than inventing a value.
+
+## Authorization
+
+- Authorization is part of the query, not a check after the fetch. Filter by the
+  owner or tenant key in the `where` clause. Fetching first and checking second is
+  a bug even when it currently returns the right answer.
+- Every route handler declares its access level explicitly. If a handler is
+  reachable without a session, there must be a comment saying so deliberately.
+- Never trust an identifier from the client to imply ownership. A request that
+  says `userId` is a claim, not a fact. Derive identity from the session.
+
+## Input
+
+- Parse every external input with a schema at the boundary, then derive the type
+  from the schema. Do not declare an interface and cast.
+- That includes request bodies, query and path params, webhooks, third-party API
+  responses, uploaded files, and environment variables at boot.
+- Reject unknown fields rather than passing them through to a database write.
+
+## Queries
+
+- Parameterized queries only. Never build SQL by string concatenation or template
+  interpolation, even for internal values.
+- Every list query has a limit with a default and a hard maximum.
+- Never expose a raw database error, stack trace, or internal id to a client.
+  Generic message out, detail to the logs.
+
+## Output
+
+- No `innerHTML`, `dangerouslySetInnerHTML`, or equivalent with user-supplied
+  content unless it has passed through a sanitizer, and say which one.
+- Serialize explicitly. Pick the fields to return rather than spreading a database
+  row into a response, because the next column someone adds will leak.
+
+## Outbound requests
+
+- The server never fetches a URL supplied by a user without an allowlist of hosts.
+- Set a timeout on every outbound request. A hung upstream should not hold a
+  connection open indefinitely.
+
+## Migrations
+
+- Destructive changes (drop, rename, type narrowing, non-null backfill) go in
+  their own commit, never bundled with a feature.
+- Expand first, migrate, then contract in a later deploy.

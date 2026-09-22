@@ -1,0 +1,7 @@
+# Objects the RLS audit should stop reporting, because they are public on purpose.
+# One per line, exactly as the audit prints the object, then a # and the reason.
+# A line without a reason is a decision nobody can audit later.
+#
+# public.plans                         # pricing table, read by the marketing site
+# public.plans (plans_read_all)        # the specific policy, if you prefer
+# storage.avatars                      # profile images are meant to be linkable

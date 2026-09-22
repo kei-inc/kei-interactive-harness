@@ -1,0 +1,20 @@
+# Keeps the ratchet honest. If this commit loosens the baseline, the message
+# has to say why, so accepted debt is a decision with a paper trail.
+# Tightening needs no justification; only an increase does.
+
+if ! git diff --cached --quiet -- .harness/ratchet.txt 2>/dev/null; then
+  sum() { awk -F'|' '{s+=$3} END {print s+0}'; }
+  before="$(git show HEAD:.harness/ratchet.txt 2>/dev/null | sum)"
+  after="$(git show :.harness/ratchet.txt 2>/dev/null | sum)"
+  if [ "$after" -gt "$before" ]; then
+    if ! grep -qiE "(debt|ratchet|spike|accept|because|tradeoff|deliberate)" "$1"; then
+      echo "This commit raises the ratchet baseline ($before -> $after)."
+      echo "Say in the commit message why the debt was worth taking."
+      exit 1
+    fi
+  fi
+fi
+
+# Project-specific additions (commitlint, custom scripts, anything the harness
+# does not do) go in commit-msg.local, which sync never touches.
+[ -f "$(dirname "$0")/commit-msg.local" ] && . "$(dirname "$0")/commit-msg.local"

@@ -1,0 +1,35 @@
+---
+description: Client-side code, components, and views
+globs: **/components/**,**/app/**,**/pages/**,**/src/ui/**,**/*.tsx,**/*.jsx,**/*.vue,**/*.svelte
+---
+
+## Trust
+
+- Everything in this layer is public. The code ships to the browser, so treat the
+  source, the env vars, and the network calls as readable by anyone.
+- Client-side validation is a courtesy to the user. The server validates again,
+  always, because the client can be bypassed with one curl command.
+- Never render user-supplied HTML without sanitizing. Never build a URL for
+  `href` or `src` from user input without checking the protocol, because
+  `javascript:` is a valid protocol.
+
+## State and effects
+
+- Derive rather than duplicate. If a value can be computed from existing state,
+  compute it rather than storing a second copy that can drift.
+- Every effect that fetches needs a cancellation path and a handled error state.
+  A component that only renders the happy path is not finished.
+- Loading, empty, error, and partial states are part of the feature. Sketch them
+  even in a spike, because retrofitting them means touching every component again.
+
+## Weight
+
+- Check what a new dependency costs before adding it. Name the size in the diff.
+- Lazy-load anything below the fold or behind a route.
+- Images get explicit dimensions so the layout does not jump.
+
+## Access
+
+- Every interactive element is reachable by keyboard and has an accessible name.
+- Do not use color alone to carry meaning.
+- Respect `prefers-reduced-motion` on anything that animates.

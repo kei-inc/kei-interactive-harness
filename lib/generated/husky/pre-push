@@ -1,0 +1,11 @@
+# Under a minute. This is the real gate, and it runs when you have already
+# stopped typing, so the wait costs nothing.
+#
+# Mid-exploration and need to push anyway?  git push --no-verify
+# That is a legitimate move on a feature branch. CI still has your back.
+
+./node_modules/.bin/harness check
+
+# Project-specific additions (commitlint, custom scripts, anything the harness
+# does not do) go in pre-push.local, which sync never touches.
+[ -f "$(dirname "$0")/pre-push.local" ] && . "$(dirname "$0")/pre-push.local"

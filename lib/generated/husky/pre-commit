@@ -1,0 +1,9 @@
+# Fast only. This hook must stay under about five seconds, because a slow
+# pre-commit is one you will start bypassing, and a bypassed hook protects
+# nothing. Everything here is instant or catches something you cannot undo.
+
+./node_modules/.bin/harness quick
+
+# Project-specific additions (commitlint, custom scripts, anything the harness
+# does not do) go in pre-commit.local, which sync never touches.
+[ -f "$(dirname "$0")/pre-commit.local" ] && . "$(dirname "$0")/pre-commit.local"

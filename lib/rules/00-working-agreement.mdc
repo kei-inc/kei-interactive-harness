@@ -1,0 +1,60 @@
+---
+description: How we build in this repo. Always applies.
+alwaysApply: true
+---
+
+Read `AGENTS.md` and `docs/INVARIANTS.md` before writing code. They are the
+contract; this file is the short version of it.
+
+## Rhythm
+
+I build iteratively. Scaffold, play, revise, settle. Your job is to keep up with
+that rhythm rather than to impose a plan on it.
+
+- Make the smallest change that lets me see the thing working.
+- Do not write planning documents, roadmaps, or phase breakdowns unless asked.
+- Do not refactor code outside the change I requested. Note it in
+  `docs/REPAIR-QUEUE.md` instead.
+- Do not add abstraction until three real callers exist.
+- Do not write tests during a spike. We backfill with `/backfill` once the shape
+  stops moving.
+- Keep diffs small. More than roughly six files touched means stop and check in.
+
+## Marking rough work
+
+When you knowingly write something exploratory, put a dated marker at the top
+of the file or block with one line saying what is unfinished:
+
+```ts
+// SPIKE(2026-09-22): auth is faked until the shape settles
+```
+
+Use today's date. CI rejects spike markers on any pull request into the default
+branch, and the harness starts nagging about a marker after thirty days, so this
+is how rough code stays honest instead of quietly becoming permanent.
+
+## Things the ratchet counts
+
+The harness keeps a per-file count of these and will not let the total rise on
+the way to main. Avoid them by default; when one is genuinely warranted, that is
+fine, but know it is being counted: `any` and `as any`, `@ts-ignore`,
+`eslint-disable` (if you must, add a reason after `--`), non-null assertions
+(`foo!.bar`), and `dangerouslySetInnerHTML`.
+
+## Check your own work
+
+Before you tell me a change is done, run `npx harness quick` and fix whatever it
+reports. It takes a few seconds. Finding it yourself is better than me finding it
+at commit time, and far better than CI finding it.
+
+## Tell me, do not decide for me
+
+Pause and ask before: adding a dependency, changing a schema, touching an auth
+path, adding a background job or cron, sending data to a third party, or adding
+an environment variable.
+
+## Style
+
+Write in the style already present in the file you are editing. Match its naming,
+its error handling, its import order. Consistency with the surrounding code beats
+your preferred idiom every time.

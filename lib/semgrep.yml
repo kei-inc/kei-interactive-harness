@@ -1,0 +1,112 @@
+# A deliberately small ruleset.
+#
+# The full semgrep registry produces hundreds of findings on a real codebase,
+# and a finding list nobody reads is worse than no list at all. These rules map
+# directly to the invariants in AGENTS.md, so every hit is a real violation of
+# something we agreed to.
+#
+# CI also runs p/owasp-top-ten and p/secrets on top of this. If those produce
+# noise, narrow them rather than abandoning them.
+#
+# Every pattern is quoted. YAML treats an unquoted `key: value` inside a pattern
+# as a mapping and the whole file becomes invalid.
+
+rules:
+  - id: ownership-checked-after-fetch
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >
+      A record is fetched first and ownership checked afterwards. Move the
+      owner or tenant filter into the query itself. The next person to edit
+      this function will not notice the separate check, and with Supabase the
+      query is where RLS can back you up.
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $ROW = await $Q
+              ...
+              if ($ROW.$OWNER !== $USER.$ID) { ... }
+          - pattern: |
+              $ROW = await $Q
+              ...
+              if ($ROW.$OWNER != $USER.$ID) { ... }
+          - pattern: |
+              const { data: $ROW } = await $Q
+              ...
+              if ($ROW.$OWNER !== $USER.$ID) { ... }
+
+  - id: response-spreads-database-row
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >
+      Spreading a row into a response publishes every column added later.
+      Pick the fields explicitly.
+    pattern-either:
+      - pattern: "Response.json({ ...$ROW })"
+      - pattern: "NextResponse.json({ ...$ROW })"
+      - pattern: "NextResponse.json({ ...$ROW, ...$REST })"
+      - pattern: "$RES.json({ ...$ROW })"
+
+  - id: supabase-select-without-limit
+    languages: [typescript, javascript]
+    severity: INFO
+    message: >
+      A select with no limit, range, or single-row terminator. Fine on a lookup
+      table, fatal on anything that grows. Add .limit(n) with a hard cap, or
+      .single() if one row is expected.
+    patterns:
+      - pattern: "$SB.from($TABLE).select($COLS)"
+      - pattern-not-inside: "$X.limit(...)"
+      - pattern-not-inside: "$X.range(...)"
+      - pattern-not-inside: "$X.single()"
+      - pattern-not-inside: "$X.maybeSingle()"
+      - pattern-not-inside: "$X.eq('id', ...)"
+      - pattern-not-inside: "$X.match(...)"
+
+  - id: fetch-of-user-supplied-url
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >
+      Server-side fetch of a URL from the request. This is server-side request
+      forgery unless the host is checked against an allowlist first.
+    pattern-either:
+      - pattern: "fetch($REQ.body.$FIELD, ...)"
+      - pattern: "fetch($REQ.query.$FIELD, ...)"
+      - pattern: "fetch($REQ.nextUrl.searchParams.get(...), ...)"
+      - pattern: "axios.get($REQ.body.$FIELD, ...)"
+
+  - id: error-detail-returned-to-client
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >
+      Internal error detail returned to the client. Log the detail, return a
+      generic message.
+    pattern-either:
+      - pattern: "$RES.status($CODE).json({ error: $ERR.message })"
+      - pattern: "Response.json({ error: $ERR.message }, ...)"
+      - pattern: "NextResponse.json({ error: $ERR.message }, ...)"
+      - pattern: "Response.json({ error: $ERR.stack }, ...)"
+
+  - id: service-role-in-client-component
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >
+      The service role key bypasses row level security and this file is a
+      client component. It ships to the browser.
+    patterns:
+      - pattern-inside: |
+          "use client"
+          ...
+      - pattern-either:
+          - pattern: "process.env.SUPABASE_SERVICE_ROLE_KEY"
+          - pattern: "process.env.SUPABASE_SECRET_KEY"
+
+  - id: missing-timeout-on-outbound-fetch
+    languages: [typescript, javascript]
+    severity: INFO
+    message: >
+      Outbound fetch with no signal. A hung upstream holds this connection
+      open indefinitely. Pass signal: AbortSignal.timeout(ms).
+    patterns:
+      - pattern: "fetch($URL)"
+      - pattern-not: "fetch(\"...\")"

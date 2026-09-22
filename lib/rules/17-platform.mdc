@@ -1,0 +1,47 @@
+---
+description: Vercel and Cloudflare. The parts that live outside the repo.
+globs: **/vercel.json,**/next.config.*,**/wrangler.*,**/.github/workflows/**
+alwaysApply: false
+---
+
+## Vercel
+
+- **Preview deployments are real deployments.** Every branch gets a public URL. If
+  previews point at the production database, then every unreviewed branch is a
+  live path into production data. Either turn on deployment protection or give
+  previews their own Supabase branch. Both is better.
+- Environment variables are scoped per environment. Production secrets belong to
+  production only. A preview holding a production service role key undoes every
+  other control in this harness.
+- Put the functions in the same region as the Supabase project. A round trip
+  across continents on every query is the most common cause of a Next.js app
+  feeling slow for no visible reason.
+- Set `maxDuration` deliberately on anything long-running, and move genuinely
+  long work off the request path entirely.
+- Watch invocation counts and bandwidth as a cost surface. An unbounded ISR
+  revalidation or a hot loop in a client component costs real money here.
+
+## Security headers
+
+Set these in `next.config` rather than per-route, so a new route cannot be born
+without them: `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` denying
+what the app does not use, and a `Content-Security-Policy`. Start the CSP in
+report-only mode, watch what breaks, then enforce.
+
+## Cloudflare
+
+- If Cloudflare proxies Vercel, the origin remains reachable directly at its
+  `.vercel.app` address, which bypasses every WAF and rate limit rule you wrote.
+  Lock the origin so it only accepts traffic from Cloudflare, otherwise the WAF
+  is decorative.
+- Rate limiting at the edge is the cheapest protection available for expensive
+  routes, authentication endpoints, and anything that calls a paid API. Put the
+  limits there in addition to application-level limits, not instead of them.
+- Worker secrets go through `wrangler secret put`. Anything in `[vars]` in
+  `wrangler.toml` is committed to the repository.
+- R2 buckets default to private. Keep them private and serve through signed URLs
+  or a Worker that checks authorization.
+- Cache rules that ignore cookies will happily cache an authenticated response
+  and serve it to the next visitor. Any route that varies by user must be
+  excluded from edge caching explicitly.
