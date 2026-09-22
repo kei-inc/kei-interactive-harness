@@ -126,6 +126,12 @@ jobs:
   # runs is a catalogue read, so it is safe against production.
   database:
     runs-on: ubuntu-latest
+    # GitHub does not allow the secrets context inside if:, and an invalid
+    # expression rejects the whole workflow. So the secret is mapped to an env
+    # var here, and steps test env instead. Without the secret, the job
+    # passes with nothing to audit.
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
     steps:
       - uses: actions/checkout@v4
       - name: Install psql
@@ -136,10 +142,8 @@ jobs:
           cache: npm
       - run: npm ci --prefer-offline --no-audit
       - name: Row level security audit
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: npx harness rls
       - name: Supabase linter
-        if: ${{ secrets.SUPABASE_DB_URL != '' }}
+        if: env.SUPABASE_DB_URL != ''
         continue-on-error: true
-        run: npx --yes supabase@latest db lint --db-url "${{ secrets.SUPABASE_DB_URL }}" --level warning
+        run: npx --yes supabase@latest db lint --db-url "$SUPABASE_DB_URL" --level warning

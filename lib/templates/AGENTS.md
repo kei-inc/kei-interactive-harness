@@ -126,12 +126,15 @@ expensive to retrofit, so do it the first time rather than fixing it later.
 This is the whole reason the checks exist: not to catch you, but to make the
 right shape the default shape.
 
+Rows marked *(Supabase)* apply only once the project uses Supabase; the rest
+apply everywhere.
+
 | The check looks for | So, as you write |
 |---|---|
-| A migration creating a table without RLS | `enable row level security` and the policies in the same migration file |
-| The service role or secret key outside `server-only` files | `import 'server-only'` at the top of any file that touches it |
+| *(Supabase)* A migration creating a table without RLS | `enable row level security` and the policies in the same migration file |
+| *(Supabase)* The service role or secret key outside `server-only` files | `import 'server-only'` at the top of any file that touches it |
 | A `route.ts` or `"use server"` file with no identity check | Call `requireUser()` first, or write `// @public-route` / `// @public-action` with a reason |
-| `getSession()` in server code | `getUser()`, or `// @allow-getsession` with a reason |
+| *(Supabase)* `getSession()` in server code | `getUser()`, or `// @allow-getsession` with a reason |
 | Caching in a file that touches user identity | Put the user or tenant id in the cache key, then `// @cache-reviewed` |
 | A secret-looking name behind `NEXT_PUBLIC_` | Server env only; if it is genuinely public, list it in `.harness/allow-public-env.txt` |
 | A `process.env.X` missing from `.env.example` | Add it with a placeholder in the same change |

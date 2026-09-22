@@ -20,7 +20,29 @@ cd "$ROOT"
 
 RED=$'\033[31m'; YELLOW=$'\033[33m'; GREEN=$'\033[32m'; DIM=$'\033[2m'; RESET=$'\033[0m'
 
-DB="${SUPABASE_DB_URL:-${DATABASE_URL:-}}"
+[ -f "$ROOT/.harness/config.sh" ] && . "$ROOT/.harness/config.sh"
+
+# This audit assumes Supabase: an anon key shipped to browsers, which is what
+# makes RLS the perimeter. Against a plain Postgres (Neon, Vercel Postgres, RDS
+# behind Prisma or Drizzle) there is no anon key, RLS is usually and correctly
+# off, and every table would be reported as exposed. So it runs only when the
+# project uses Supabase.
+is_supabase() {
+  case "${HARNESS_SUPABASE:-auto}" in
+    on) return 0 ;; off) return 1 ;;
+  esac
+  [ -d "$ROOT/supabase" ] && return 0
+  grep -qE '"(@supabase/[^"]+|supabase)"[[:space:]]*:' "$ROOT/package.json" 2>/dev/null
+}
+if ! is_supabase; then
+  printf '%s\n' "${DIM}skipped: not a Supabase project (set HARNESS_SUPABASE=on to force)${RESET}"
+  exit 0
+fi
+
+# Only SUPABASE_DB_URL, never DATABASE_URL: the latter is the generic name every
+# ORM uses, and pointing this audit at a non-Supabase database is the false
+# alarm described above.
+DB="${SUPABASE_DB_URL:-}"
 
 if [ -z "$DB" ]; then
   printf '%s\n' "${DIM}skipped: set SUPABASE_DB_URL to audit row level security${RESET}"
