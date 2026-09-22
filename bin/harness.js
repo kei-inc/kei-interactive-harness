@@ -332,7 +332,7 @@ function fleet(dir) {
     console.log(`  ${mark}  ${v.padEnd(10)} ${name}`);
   }
   if (!found) console.log(c.d('  No harness projects found. Pass a directory: npx harness fleet ~/work'));
-  else console.log('\n' + c.d('  Update one:  cd <project> && npm update kei-interactive-harness && npx harness sync'));
+  else console.log('\n' + c.d('  Update one:  cd <project> && npm i -D github:kei-inc/kei-interactive-harness#<tag> && npx harness sync'));
 }
 
 // ------------------------------------------------------------------- eject --

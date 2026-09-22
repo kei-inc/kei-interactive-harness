@@ -32,15 +32,20 @@ question of drift.
 
 ## Using it
 
+This package is not on the npm registry, and should never be installed by bare
+name. `npm i kei-interactive-harness` would look it up on the public registry,
+where anyone could publish something under that name. Always install from the
+GitHub address, pinned to a tag.
+
 ```bash
 # once per project, in this order
-npm i -D husky kei-interactive-harness
+npm i -D husky github:kei-inc/kei-interactive-harness#v1.0.0
 npx harness init          # also wires git to .husky/; do NOT run `husky init`
 npx harness ratchet       # baseline
 git add -A && git commit -m "add kei-interactive-harness"
 
 # whenever the harness improves
-npm update kei-interactive-harness && npx harness sync
+npm i -D github:kei-inc/kei-interactive-harness#v1.1.0 && npx harness sync   # new tag
 
 # across everything
 npx harness fleet ~/code     # which projects are on which version
@@ -61,7 +66,7 @@ accumulates what your codebases have taught you.
 Publishing options, in rough order of friction:
 
 - **Private npm registry** if you have one. `npm publish`, `npm update`.
-- **GitHub directly**, no registry: `npm i -D github:kei/interactive-harness#v1.2.0`. Pin by
+- **GitHub directly**, no registry: `npm i -D github:kei-inc/kei-interactive-harness#v1.2.0`. Pin by
   tag, bump the tag in each project's `package.json` when you want to move.
 - **A file dependency** while you are still iterating fast:
   `npm i -D file:../harness`. Changes are live with no publish step at all, which
