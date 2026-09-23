@@ -124,20 +124,57 @@ fi
 
 fi
 if ! disabled migrations; then
-# --- 6. Every migration that creates a table must enable RLS. --------------
-# Catching this at authoring time is far cheaper than catching it in the
-# database audit after deploy.
+# --- 6. Every migration that creates a table: grant, RLS, policies. --------
+# Supabase's Data API grants change (new projects from 2026-05-30, existing
+# projects from 2026-10-30) means new public tables get no grants
+# automatically. Grants decide whether a role can reach a table; RLS decides
+# which rows. They travel as a unit, in the migration that creates the table.
+#
+#   missing RLS    -> blocked. Expensive to undo if the table is ever granted.
+#   missing grant  -> note. Fails closed: the table is simply unreachable from
+#                     supabase-js. Mark a server-only table -- @no-data-api.
 
 for m in supabase/migrations/*.sql; do
   [ -e "$m" ] || continue
-  if grep -qiE 'create table( if not exists)? (public\.)?[a-z_]' "$m"; then
-    if ! grep -qi 'enable row level security' "$m"; then
-      block "migration creates a table without enabling RLS: $m"
-      printf '%s\n' "    Add: alter table public.<name> enable row level security;"
-      printf '%s\n' "    plus the policies, in this same migration."
-    fi
+  tables="$(grep -ioE 'create table( if not exists)?[[:space:]]+(public\.)?"?[a-z_][a-z0-9_]*' "$m" \
+            | sed -E 's/.*[[:space:]]//; s/^public\.//; s/"//g' | sort -u)"
+  [ -z "$tables" ] && continue
+  if ! grep -qi 'enable row level security' "$m"; then
+    block "migration creates a table without enabling RLS: $m"
+    printf '%s\n' "    Add, in this same migration: grants, then enable RLS, then policies."
+  fi
+  # A bulk grant in this migration technically covers its tables; the bulk
+  # grant gets its own note below instead of a misleading per-table one.
+  bulk=0
+  grep -qiE 'grant[^;]+on[[:space:]]+all[[:space:]]+tables[[:space:]]+in[[:space:]]+schema[[:space:]]+public' "$m" && bulk=1
+  if ! grep -q '@no-data-api' "$m" && [ "$bulk" -eq 0 ]; then
+    for t in $tables; do
+      if ! grep -qiE "grant[^;]+on[[:space:]]+(table[[:space:]]+)?(public\.)?\"?${t}\"?[[:space:]]+to" "$m"; then
+        note "table $t has no grant in $m"
+        printf '%s\n' "${DIM}       Without one, supabase-js cannot reach it (42501). Add e.g.${RESET}"
+        printf '%s\n' "${DIM}       grant select, insert, update, delete on public.$t to authenticated;${RESET}"
+        printf '%s\n' "${DIM}       or mark the migration -- @no-data-api if the table is server-only.${RESET}"
+      fi
+    done
+  fi
+  # Re-exposing everything is the posture the platform change moves away from.
+  if grep -qiE 'grant[^;]+on[[:space:]]+all[[:space:]]+tables[[:space:]]+in[[:space:]]+schema[[:space:]]+public[^;]+anon' "$m"; then
+    note "bulk grant to anon on all public tables in $m"
+    printf '%s\n' "${DIM}       Grant per table, per role. A bulk grant exposes every future review gap too.${RESET}"
+  fi
+  if grep -qiE 'alter[[:space:]]+default[[:space:]]+privileges[^;]+grant[^;]+anon' "$m"; then
+    note "default privileges re-grant new tables to anon in $m"
+    printf '%s\n' "${DIM}       This restores auto-exposure of every future table. Only do it knowingly.${RESET}"
   fi
 done
+
+# The CLI's temporary cutover flag is removed on 2026-10-30, and Supabase
+# branching already fails to parse a config that contains it.
+if [ -f supabase/config.toml ] && grep -q 'auto_expose_new_tables' supabase/config.toml; then
+  note "supabase/config.toml sets auto_expose_new_tables"
+  printf '%s\n' "${DIM}       Temporary flag, removed 2026-10-30, and it breaks branch config parsing.${RESET}"
+  printf '%s\n' "${DIM}       Remove it and put explicit grants in migrations instead.${RESET}"
+fi
 
 fi
 if ! disabled cache-review; then

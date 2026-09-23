@@ -7,28 +7,71 @@ alwaysApply: false
 ## The one thing to understand
 
 The anon key ships to every browser. Anyone can open devtools, copy it, and
-query the REST endpoint directly with curl. This means **row level security in
-Postgres is the security boundary of this application.** Checks in server
+query the REST endpoint directly with curl. This means **Postgres grants and row
+level security together are the security boundary of this application.** Checks in server
 components, route handlers, and middleware are conveniences on top of it. If RLS
 is wrong, none of them matter, because the attacker does not go through your app.
 
 Design every feature by asking what the RLS policy is first, and only then how
 the UI calls it.
 
+## Grants, RLS, policies: one unit
+
+Two layers decide what a browser holding the anon key can reach. **Grants**
+decide whether a role can reach a table at all. **RLS** decides which rows it
+sees once it can. Since Supabase's Data API change (new projects from
+2026-05-30, all existing projects from 2026-10-30), new tables in `public` get
+no grants automatically, so both layers are written by hand, together.
+
+Every migration that creates a table carries all three, in this order:
+
+```sql
+create table public.documents (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references auth.users(id),
+  title text not null
+);
+create index on public.documents (owner_id);
+
+-- 1. grants: only the roles and privileges this table genuinely needs
+grant select, insert, update, delete on public.documents to authenticated;
+grant select, insert, update, delete on public.documents to service_role;
+
+-- 2. RLS
+alter table public.documents enable row level security;
+
+-- 3. policies, one per operation
+create policy documents_select on public.documents for select to authenticated
+  using ((select auth.uid()) = owner_id);
+create policy documents_insert on public.documents for insert to authenticated
+  with check ((select auth.uid()) = owner_id);
+```
+
+- **Grant narrowly.** `anon` gets nothing unless the logged-out experience
+  needs it, and then usually only `select`. `authenticated` gets what signed-in
+  users do. `service_role` gets what server code does.
+- **Sequences need their own grant** if an insert through the Data API uses a
+  `serial` or identity column: `grant usage, select on sequence ... to authenticated;`
+- **Views need grants too**, and `with (security_invoker = on)`.
+- **Server-only tables get no grants**, and the migration carries a
+  `-- @no-data-api` comment so the harness knows it was deliberate.
+- **Never fix a missing grant with a bulk grant** (`on all tables in schema
+  public`) or by restoring default privileges. Both re-expose every future
+  table, which is the problem the platform change exists to solve.
+- A `42501 permission denied for table` error from supabase-js means a missing
+  **grant**, not a wrong policy. RLS failures return empty results instead.
+
 ## RLS rules
 
-- Every table in the `public` schema has RLS enabled. No exceptions, including
-  lookup tables, including tables you think are not sensitive.
-- RLS is enabled **in the same migration that creates the table**, along with its
-  policies. A table that exists for one deploy without policies is a table that
-  was public for one deploy.
+- Every table in `public` that has any grant has RLS enabled. Enable it on
+  server-only tables too; it costs nothing and protects against a future grant.
 - Write policies as narrowly as the feature allows. `using (true)` is the same as
   having no RLS, so if you write it, say out loud why.
-- Separate policies per operation. A single `for all` policy usually means the
-  read rule and the write rule got conflated, and the write rule should be
-  stricter.
+- Separate policies per operation and name the role with `to authenticated`.
+  A single `for all` policy usually means the read rule and the write rule got
+  conflated, and the write rule should be stricter.
 - Never let `anon` write without a considered reason. If a contact form needs it,
-  scope the policy to a single table with a check constraint and a rate limit.
+  scope the grant and the policy to that one table and add a rate limit.
 - Wrap function calls in policies so they are evaluated once rather than per row:
   `(select auth.uid()) = user_id` rather than `auth.uid() = user_id`.
 - Index every column a policy filters on. Policies run per row, so an unindexed
@@ -75,6 +118,14 @@ the UI calls it.
 
 ## Migrations
 
+- Create every migration with `supabase migration new <name>`, so its version is
+  a fresh timestamp that sorts after everything already merged.
+- **Never edit a migration once it has merged.** Applied migrations are never
+  re-run, so production keeps the old version while fresh environments get the
+  new one. Put the change in a new migration.
+- Never delete a merged migration. Undo its effects with a new one.
+- Supabase's GitHub integration applies migrations at merge. Do not apply them
+  to any remote database by hand or from a script.
 - All schema change goes through `supabase/migrations`. Changes made in the
   dashboard exist in exactly one environment and vanish from history.
 - Generate types after every migration and commit them, so drift between the

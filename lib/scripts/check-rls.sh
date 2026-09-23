@@ -39,24 +39,31 @@ if ! is_supabase; then
   exit 0
 fi
 
-# Only SUPABASE_DB_URL, never DATABASE_URL: the latter is the generic name every
-# ORM uses, and pointing this audit at a non-Supabase database is the false
-# alarm described above.
-DB="${SUPABASE_DB_URL:-}"
+# Only SUPABASE_DB_URL or a detected local Supabase stack, never DATABASE_URL:
+# the latter is the generic name every ORM uses, and pointing this audit at a
+# non-Supabase database is the false alarm described above.
+. "$HARNESS_LIB/scripts/_db.sh"
 
-if [ -z "$DB" ]; then
-  printf '%s\n' "${DIM}skipped: set SUPABASE_DB_URL to audit row level security${RESET}"
-  printf '%s\n' "${DIM}  local:  supabase status --output json  (look for DB URL)${RESET}"
+if ! resolve_db; then
+  printf '%s\n' "${DIM}skipped: no database to audit${RESET}"
+  no_db_help rls | sed "s/^/${DIM}/; s/$/${RESET}/"
   exit 0
 fi
+printf '%s\n' "${DIM}auditing: ${DB_SOURCE}${RESET}"
 
-if ! command -v psql >/dev/null 2>&1; then
-  printf '%s\n' "${YELLOW}psql not installed. brew install libpq, or use the supabase CLI.${RESET}"
-  exit 0
+OUT="$(run_sql "$HARNESS_LIB/sql/rls-audit.sql" 2>/dev/null)"; rc=$?
+if [ "$rc" -eq 127 ]; then no_client_help; exit 0; fi
+if [ "$rc" -ne 0 ]; then
+  printf '%s\n' "${YELLOW}Could not query the database (exit $rc). Is it running and reachable?${RESET}"
+  exit 1
 fi
-
-OUT="$(psql "$DB" -X -q -f "$HARNESS_LIB/sql/rls-audit.sql" 2>/dev/null)"
-STORAGE="$(psql "$DB" -X -q -f "$HARNESS_LIB/sql/storage-audit.sql" 2>/dev/null || true)"
+if ! printf '%s\n' "$OUT" | grep -q '^MARKER|harness|audit-complete|'; then
+  printf '%s\n' "${RED}The audit did not complete, so its silence means nothing.${RESET}"
+  printf '%s\n' "Checked: ${DB_SOURCE}. Confirm the database is running and reachable, then retry."
+  exit 1
+fi
+OUT="$(printf '%s\n' "$OUT" | grep -v '^MARKER|')"
+STORAGE="$(run_sql "$HARNESS_LIB/sql/storage-audit.sql" 2>/dev/null || true)"
 ALL="$(printf '%s\n%s\n' "$OUT" "$STORAGE" | grep -v '^$' || true)"
 
 # Deliberately public objects. One per line: a table name, a "table (policy)"

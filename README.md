@@ -117,8 +117,11 @@ lib/templates/         written once at init, then owned by the project
 ## Testing changes to the audit
 
 `test/rls-fixture.sql` builds a Supabase-shaped database with known good and
-known bad patterns. Run the audit against it after any change to
-`lib/sql/rls-audit.sql`; the file header says what to expect. The semgrep rules
+known bad patterns, modelled on an existing project still on the old auto-grant
+default, with a few tables created the new explicit-grant way. After any change to `lib/sql/rls-audit.sql`, run
+`bash test/run-fixture.sh`: it starts a throwaway Postgres in Docker, loads the
+fixture, runs the audit, and checks the counts against what the fixture
+expects. It needs only Docker Desktop running and leaves nothing behind. The semgrep rules
 can be validated with `semgrep --validate --config lib/semgrep.yml`.
 
 ## Commands

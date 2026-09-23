@@ -39,6 +39,9 @@ jobs:
       - name: New code introduced by this branch
         if: github.event_name == 'pull_request'
         run: npx harness ratchet --new "origin/${{ github.base_ref }}"
+      - name: Migrations (order, and no edits to merged ones)
+        if: github.event_name == 'pull_request' && hashFiles('supabase/migrations/*.sql') != ''
+        run: npx harness migrations --strict "origin/${{ github.base_ref }}"
       - name: Types
         run: npm run typecheck --if-present
       - name: Lint

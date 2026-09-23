@@ -103,6 +103,14 @@ check() {
   step lint
   say "Unit tests"
   step "test:unit"
+
+  # Soft here: trunk problems (edited or out-of-order migrations) are notes on
+  # a branch and blocks on the pull request. A local database behind the files
+  # is reported, or applied if HARNESS_MIGRATE_LOCAL=apply.
+  if [ -d supabase/migrations ]; then
+    say "Migrations"
+    bash "$HARNESS_LIB/scripts/check-migrations.sh" || bad "migration files are broken"
+  fi
 }
 
 # ----------------------------------------------------------------- full -----

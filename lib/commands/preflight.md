@@ -14,7 +14,12 @@ checking, and say plainly when you cannot verify something from the repo alone.
 Run `SUPABASE_DB_URL=... npx harness rls` against the environment being launched, not
 against local. Then confirm by hand:
 
-- [ ] Every table in `public` has RLS on, verified against the live database.
+- [ ] Every table in `public` that `anon` or `authenticated` can reach has RLS
+      on, verified against the live database.
+- [ ] Grants are explicit in migrations rather than inherited from the old
+      platform default. If the audit reports `auto_expose_default`, run
+      `npx harness grants` and commit the result as a migration.
+- [ ] `anon` holds only the grants the logged-out experience needs.
 - [ ] No policy is effectively `true` without a written reason in `.harness/rls-allow.txt`.
 - [ ] `anon` has no write policy you did not deliberately grant.
 - [ ] Every view is `security_invoker = on`.

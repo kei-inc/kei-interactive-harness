@@ -180,6 +180,11 @@ function init() {
 # Skip specific checks in this project, space separated.
 # HARNESS_DISABLE="getsession cache-review"
 
+# When pre-push finds the LOCAL database behind your migration files, report it
+# (default) or apply them with 'supabase migration up'. Never touches any
+# database other than the local stack.
+# HARNESS_MIGRATE_LOCAL=report
+
 # A site with no user accounts at all (marketing, docs, a portfolio) has no
 # identity to check. Mark each route or action // @public-route with a reason,
 # or turn the checks off for the whole project:
@@ -526,6 +531,8 @@ switch (cmd) {
   case 'boundaries': run('check-boundaries.sh', rest); break;
   case 'stack': run('check-stack.sh', rest); break;
   case 'rls': run('check-rls.sh', rest); break;
+  case 'grants': run('grants.sh', rest); break;
+  case 'migrations': run('check-migrations.sh', rest); break;
 
   case 'lib': console.log(LIB); break;
   case 'version': case '--version': console.log(PKG.version); break;
@@ -553,5 +560,7 @@ switch (cmd) {
     lib             print the package lib path (for CI)
     stack           Next.js, Supabase, Cloudflare specifics
     rls             audit the live database perimeter
+    grants          print today's Data API grants as a migration
+    migrations      migration order, drift, and local database state
 `);
 }

@@ -9,7 +9,7 @@ things about this specific deployment that an agent cannot infer from the code.
 |---|---|---|---|
 | Production | production | | yes |
 | Preview | preview | | protected / open |
-| Local | development | local via CLI | no |
+| Local | development | Supabase CLI on Docker (`supabase start`) | no |
 
 **Do previews touch production data?** yes / no. If yes, say why, because this is
 the single most common way a side project leaks its database.
@@ -19,6 +19,8 @@ the single most common way a side project leaks its database.
 - Project ref:
 - Region:
 - Tenancy column (the boundary between customers):
+- Data API grants: explicit in migrations since ______ / still on the old
+  auto-grant default (Supabase ends it for existing projects on 2026-10-30)
 - Tables intentionally readable by `anon`:
 - Tables intentionally writable by `anon`:
 - Places the service role key is used, and why RLS could not express the rule:
