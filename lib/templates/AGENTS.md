@@ -58,16 +58,30 @@ What this means for you:
 Code in this repo lives in one of two states, and you should say which one you are
 writing in.
 
-- **Spike.** Exploratory. Leave a dated comment at the top of any file or block
-  that is knowingly rough: `SPIKE(2026-09-22): auth is faked until the shape settles`.
-  CI allows spikes on feature branches and rejects them on any pull request
+- **Spike.** A specific piece of code that is knowingly not fit to ship. Not a
+  branch, not a mode: a label on the code itself. The test is simple. If it
+  could go to production exactly as written, it is not a spike, however
+  experimental it feels. If it could not (auth faked, hardcoded data standing in
+  for a query, a missing error state, a disabled check), mark it with a dated
+  comment at the top of the file or block:
+  `SPIKE(2026-09-22): hardcoded race list until the query shape settles`.
+  CI allows spikes on the `play` branch and rejects them on any pull request
   into the default branch, so they cannot leak into production. The date matters, because a spike older than a
   month is no longer exploration, it is debt, and the harness will start saying so.
 - **Settled.** Has tests, has validated inputs, has explicit authorization, has
   bounded queries. Once something is settled, treat regressions as bugs.
 
-The `SPIKE:` marker is how I buy freedom without losing track of debt. Use it
-generously rather than quietly leaving rough code unmarked.
+The `SPIKE:` marker is how I buy freedom without losing track of debt. Whenever
+you cut a corner on purpose, mark it without being asked rather than quietly
+leaving rough code unmarked.
+
+## Where work happens
+
+Day-to-day work goes on a long-lived `play` branch, not on `main`. Commit and
+push freely there; nothing needs a pull request. When a batch settles, one pull
+request from `play` into `main`, merged with a merge commit, and `play` carries
+on. `docs/WORKFLOW.md` has the commands. If you are on `main` with changes to
+make, stop and tell me first.
 
 ## Non-negotiables (these apply even in a spike)
 

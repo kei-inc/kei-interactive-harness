@@ -20,18 +20,34 @@ that rhythm rather than to impose a plan on it.
   stops moving.
 - Keep diffs small. More than roughly six files touched means stop and check in.
 
+## Where work happens
+
+Day-to-day work happens on a long-lived `play` branch, never directly on
+`main`. Settled batches reach `main` through one pull request, merged with a
+merge commit. If you find yourself on `main` with changes to make, say so
+before committing; the boundary check rejects any spike marker there.
+
 ## Marking rough work
 
-When you knowingly write something exploratory, put a dated marker at the top
-of the file or block with one line saying what is unfinished:
+A spike is not a branch, a mode, or a phase. It is a label on a specific piece
+of code that is knowingly not fit to ship. Most experimenting needs no marker:
+a new layout that works is just code, even if it is gone tomorrow.
+
+The test: if this could go to production exactly as written, no marker. If it
+could not, mark it. That means corners cut on purpose, such as faked or skipped
+auth, hardcoded data standing in for a query, a missing error state, a disabled
+check. Put a dated marker at the top of the file or block with one line saying
+what is unfinished:
 
 ```ts
-// SPIKE(2026-09-22): auth is faked until the shape settles
+// SPIKE(2026-09-22): hardcoded race list until the query shape settles
 ```
 
-Use today's date. CI rejects spike markers on any pull request into the default
-branch, and the harness starts nagging about a marker after thirty days, so this
-is how rough code stays honest instead of quietly becoming permanent.
+Use today's date. Whenever you cut such a corner, add the marker yourself
+without being asked. CI rejects spike markers on any pull request into the
+default branch, and the harness starts nagging about a marker after thirty
+days, so this is how rough code stays honest instead of quietly becoming
+permanent.
 
 ## Things the ratchet counts
 

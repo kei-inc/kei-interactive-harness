@@ -9,9 +9,51 @@ teammate. Substitute your own feature; the rhythm is the same.
 
 ---
 
+## Where you work: one play branch
+
+The harness splits the world in two: loose on a branch, strict on `main`.
+Working straight on `main` puts every experiment on the strict side. Spike
+markers block every commit there, CI enforces the ratchet on every push, and
+every push deploys to production with nothing in between.
+
+So day-to-day work happens on one long-lived branch, `play`. Create it once:
+
+```bash
+git switch -c play
+git push -u origin play
+```
+
+Then work the way you always have. Commit whenever, push whenever. No idea
+needs its own pull request. Each push gets a Vercel preview, and Vercel keeps a
+stable URL for the branch itself (`<project>-git-play-<team>.vercel.app`) that
+always shows the latest push. Bookmark it; that is your "try it for real"
+environment in place of production.
+
+Pull requests happen per batch of settled work, not per idea: when something
+has landed, at the end of a day, at the end of a week. Your call.
+
+One thing to watch: if previews point at the production Supabase database, a
+migration on `play` does not exist there until it merges. Try schema changes
+against the local Docker stack, which pre-push keeps current (or migrates for
+you with `HARNESS_MIGRATE_LOCAL=apply` in `.harness/config.sh`).
+
+### What a spike is
+
+A spike is not a branch or a mode. It is a label on a specific piece of code
+you know is not fit to ship. Most experimenting needs no marker: a new layout
+that works is just code, even if you throw it away tomorrow.
+
+The test: if this could go to production exactly as written, no marker. If it
+could not, mark it. Faked auth, hardcoded data standing in for a query, a
+missing error state, a disabled check. The marker costs nothing on `play`, and
+the pull request into `main` stops on it, so a shortcut cannot ride along into
+production just because you forgot about it.
+
+---
+
 ## Morning: scaffold
 
-Branch and start talking to the agent. Nothing ceremonial happens here.
+On `play`, start talking to the agent. Nothing ceremonial happens here.
 
 The rules in `.cursor/rules/` are already shaping what gets written, invisibly,
 which is the cheapest place in the whole system to prevent a problem. Ask for a
@@ -121,11 +163,17 @@ was worth keeping, `npx harness ratchet --accept` and a sentence in the commit
 message would have been the honest alternative.
 
 If you genuinely need to push mid-exploration, `git push --no-verify` is a
-legitimate move on a feature branch. CI still has you.
+legitimate move on `play`. CI still has you.
 
 ---
 
 ## Pull request
+
+When a batch has settled, one pull request from `play` into `main`:
+
+```bash
+gh pr create --base main --head play --fill
+```
 
 Four jobs in parallel:
 
@@ -153,6 +201,20 @@ finished or gets pulled out of the branch before it can merge.
 
 This is the gate that stops exploratory code from quietly becoming production,
 and it is the only place in the system where the harness is genuinely strict.
+
+Merge with a **merge commit**, not a squash, then bring `play` up to date and
+carry on:
+
+```bash
+gh pr merge --merge
+git switch play
+git pull origin main
+```
+
+With a merge commit, `play` never needs resetting: its history is already in
+`main`, so the next pull request shows only what is new. The same `git pull
+origin main` brings `play` up to date after an urgent fix pushed straight to
+`main`.
 
 If this is the first time the feature becomes publicly reachable, or if it
 meaningfully changed the public surface, run `/preflight`. That pass covers what
@@ -201,6 +263,13 @@ notice.
 ---
 
 ## Quick reference
+
+```bash
+git switch play                               # where work happens
+gh pr create --base main --head play --fill   # a batch has settled
+gh pr merge --merge                           # merge commit, never squash
+git pull origin main                          # on play, after a merge or a hotfix
+```
 
 ```bash
 npx harness quick                # pre-commit set, seconds

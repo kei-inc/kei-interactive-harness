@@ -8,6 +8,11 @@ gates, named repair rituals rather than constant interruption, and per-project
 invariants that make generic checks specific. Tuned for Next.js on Vercel with
 Supabase and Cloudflare.
 
+`docs/SETUP.md` is the operations guide: releasing the harness, installing it on
+new and existing projects, wiring CI and the database audit, updating, and
+troubleshooting. It is versioned with the code, so the guide at any tag matches
+that release.
+
 `lib/templates/WORKFLOW.md` walks the whole cycle end to end, from scaffold to
 production, and lands in each project as `docs/WORKFLOW.md`. Read that first if
 you want the usage flow rather than the architecture.
@@ -39,13 +44,13 @@ GitHub address, pinned to a tag.
 
 ```bash
 # once per project, in this order
-npm i -D husky github:kei-inc/kei-interactive-harness#v1.0.0
+npm i -D husky github:kei-inc/kei-interactive-harness#v1.2.0
 npx harness init          # also wires git to .husky/; do NOT run `husky init`
 npx harness ratchet       # baseline
 git add -A && git commit -m "add kei-interactive-harness"
 
 # whenever the harness improves
-npm i -D github:kei-inc/kei-interactive-harness#v1.1.0 && npx harness sync   # new tag
+npm i -D github:kei-inc/kei-interactive-harness#v1.2.0 && npx harness sync   # the new tag
 
 # across everything
 npx harness fleet ~/code     # which projects are on which version
@@ -54,9 +59,20 @@ npx harness doctor           # drift, and what is mine versus managed
 
 ## Changing the harness
 
-Edit this repo, bump the version, publish or push a tag. Then in any project,
-`npm update` and `npx harness sync`. That is the whole loop, and it is the point
-of the structure.
+Edit this repo, commit, then release with one command:
+
+```bash
+npm version <major|minor|patch>   # bumps package.json, rewrites the doc pins, commits "vX.Y.Z", tags it
+git push --follow-tags
+```
+
+Never bump `package.json` or tag by hand. `npm version` runs
+`scripts/sync-version.js`, which rewrites every `kei-interactive-harness#vX.Y.Z`
+in the docs to the new tag inside the same commit, so the instructions cannot
+fall behind the release. `npm run check:version` fails if they ever have.
+
+Then in any project, install the new tag and `npx harness sync`. That is the
+whole loop, and it is the point of the structure.
 
 The rhythm worth aiming for: when a `/repair` or `/threat` pass catches the same
 thing for the third time in any project, add the check here rather than there.
@@ -112,6 +128,8 @@ lib/semgrep.yml        curated ruleset
 lib/generated/         husky hooks and CI workflows, thin shims over the CLI
 lib/templates/         written once at init, then owned by the project
   WORKFLOW.md          the development cycle, start to finish
+docs/SETUP.md          install, release, update, troubleshoot (not shipped to projects)
+scripts/               release tooling for this repo (not shipped to projects)
 ```
 
 ## Testing changes to the audit

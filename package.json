@@ -5,6 +5,10 @@
   "bin": {
     "harness": "./bin/harness.js"
   },
+  "scripts": {
+    "version": "node scripts/sync-version.js",
+    "check:version": "node scripts/sync-version.js --check"
+  },
   "files": [
     "bin",
     "lib",

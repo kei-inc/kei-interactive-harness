@@ -2,7 +2,8 @@
 # stopped typing, so the wait costs nothing.
 #
 # Mid-exploration and need to push anyway?  git push --no-verify
-# That is a legitimate move on a feature branch. CI still has your back.
+# That is a legitimate move on play, or any branch other than main. CI still
+# has your back.
 
 ./node_modules/.bin/harness check
 
