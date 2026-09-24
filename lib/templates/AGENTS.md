@@ -175,6 +175,16 @@ Do not run these unprompted. I invoke them when a session settles.
 | `/scale` | Performance and growth pass on a named feature |
 | `/backfill` | Write the tests for a feature whose shape has settled |
 
+The workflow commands move work between `play` and `main` from chat, so I never
+need a terminal for it. Also only when I invoke them.
+
+| Command | What it does |
+|---|---|
+| `/status` | Where am I: branch, uncommitted work, spikes, ratchet, open pull request. Read-only |
+| `/play` | Get onto `play` (creating it if needed) and bring it up to date with main |
+| `/ship` | Commit, surface what will block, push, and open or update the pull request into main |
+| `/land` | Merge the green pull request with a merge commit and bring `play` back in step |
+
 ## Commands
 
 ```

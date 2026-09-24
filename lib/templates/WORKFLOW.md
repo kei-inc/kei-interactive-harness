@@ -264,6 +264,17 @@ notice.
 
 ## Quick reference
 
+The branch loop runs from Cursor chat:
+
+| Command | When |
+|---|---|
+| `/status` | any time: branch, spikes, debt, open pull request |
+| `/play` | once to create `play`, or whenever you have ended up on `main` |
+| `/ship` | a batch has settled: push and open the pull request into main |
+| `/land` | the pull request is green: merge it and carry on |
+
+The same thing by hand, if you are in a terminal anyway:
+
 ```bash
 git switch play                               # where work happens
 gh pr create --base main --head play --fill   # a batch has settled
