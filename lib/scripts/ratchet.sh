@@ -240,7 +240,8 @@ done <<< "$CURRENT"
 # exactly this reason. Here it happens automatically.
 while IFS='|' read -r m f c; do
   [ -z "${m:-}" ] && continue
-  if ! grep -q "^${m}|${f}|" <<< "$CURRENT"; then
+  # Exact field match, never a regex: Next.js paths carry [id] and (group).
+  if ! awk -F'|' -v m="$m" -v f="$f" '$1==m && $2==f {found=1} END {exit !found}' <<< "$CURRENT"; then
     if [ -e "$f" ]; then
       printf '%s\n' "${GREEN}  cleared  $m  ${f}${RESET}"
     else
