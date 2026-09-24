@@ -208,8 +208,8 @@ if [ ! -f "$BASELINE" ] && [ "$MODE" = "--check" ]; then
 fi
 if [ ! -f "$BASELINE" ] || [ "$MODE" = "--accept" ]; then
   printf '%s\n' "$CURRENT" > "$BASELINE"
-  printf '%s\n' "${GREEN}Baseline written. $(wc -l < "$BASELINE" | tr -d ' ') entries across $(metric_labels | wc -l | tr -d ' ') metrics.${RESET}"
-  for label in $(metric_labels); do printf '  %-22s %s\n' "$label" "$(total_for "$label")"; done
+  printf '%s\n' "${GREEN}Baseline written: $(grep -c . "$BASELINE" 2>/dev/null || echo 0) file entries across $(metric_labels | wc -l | tr -d ' ') metrics.${RESET}"
+  for label in $(metric_labels); do printf '  %-22s %s\n' "$(bare "$label")" "$(total_for "$label")"; done
   exit 0
 fi
 

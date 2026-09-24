@@ -105,8 +105,34 @@ rules:
     languages: [typescript, javascript]
     severity: INFO
     message: >
-      Outbound fetch with no signal. A hung upstream holds this connection
-      open indefinitely. Pass signal: AbortSignal.timeout(ms).
+      Server-side fetch with no signal. A hung upstream holds this request, and
+      the function running it, open until the platform kills it. Pass
+      signal: AbortSignal.timeout(ms).
+    # Server code only. In the browser a hung fetch costs one tab, the user can
+    # leave, and service workers have their own lifecycle.
+    paths:
+      exclude:
+        - "**/public/**"
+        - "**/sw.js"
+        - "**/service-worker.*"
+        - "**/components/**"
+        - "**/*.client.*"
     patterns:
       - pattern: "fetch($URL)"
       - pattern-not: "fetch(\"...\")"
+      - pattern-not-inside: |
+          "use client"
+          ...
+      - pattern-not-inside: |
+          'use client'
+          ...
+
+  - id: supabase-get-public-url
+    languages: [typescript, javascript]
+    severity: INFO
+    message: >
+      getPublicUrl() only works on a public bucket, and anything in a public
+      bucket is readable by anyone with the URL, forever. If this bucket is
+      meant to be public, list it in .harness/rls-allow.txt. If not, use
+      createSignedUrl() for readers and storage.download() on the server.
+    pattern: "$STORAGE.from($BUCKET).getPublicUrl(...)"

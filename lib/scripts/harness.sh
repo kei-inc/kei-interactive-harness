@@ -68,7 +68,7 @@ quick() {
 
   say "Secrets"
   if has_bin gitleaks; then
-    if gitleaks protect --staged --no-banner --redact; then ok "gitleaks"
+    if gitleaks git --staged --no-banner --redact --exit-code 1 . ; then ok "gitleaks"
     else bad "gitleaks found a secret in staged changes"; fi
   else
     skip "gitleaks not installed (brew install gitleaks)"
@@ -141,16 +141,11 @@ full() {
   fi
 
   say "Static analysis"
-  if has_bin semgrep; then
-    if semgrep --config "$HARNESS_LIB/semgrep.yml" --config p/owasp-top-ten --error --quiet .; then ok "semgrep"
-    else bad "semgrep findings"; fi
-  else
-    skip "semgrep not installed (pipx install semgrep)"
-  fi
+  bash "$HARNESS_LIB/scripts/semgrep.sh" || bad "semgrep findings introduced on this branch"
 
   say "Full secret history scan"
   if has_bin gitleaks; then
-    gitleaks detect --no-banner --redact && ok "gitleaks history" || bad "secret found in history"
+    gitleaks git --no-banner --redact --exit-code 1 . && ok "gitleaks history" || bad "secret found in history (accepted ones go in .gitleaksignore)"
   else
     skip "gitleaks not installed"
   fi

@@ -1,7 +1,13 @@
-# Objects the RLS audit should stop reporting, because they are public on purpose.
-# One per line, exactly as the audit prints the object, then a # and the reason.
-# A line without a reason is a decision nobody can audit later.
+# Objects the audit should stop reporting, because they are public on purpose.
+# One per line: the object EXACTLY as the audit prints it, then # and a reason.
+# Matching is exact. A table entry also covers that table's policies, and
+# nothing else (public.plans does not cover public.plans_history).
 #
-# public.plans                         # pricing table, read by the marketing site
-# public.plans (plans_read_all)        # the specific policy, if you prefer
-# storage.avatars                      # profile images are meant to be linkable
+# For a temporary exception, put until(YYYY-MM-DD) in the reason. After that
+# date the finding comes back, so "until the migration lands" cannot quietly
+# become permanent.
+#
+# public.plans                   # pricing table, read by the marketing site
+# public.plans (plans_read_all)  # just this policy, if you prefer
+# storage.avatars                # profile images are meant to be linkable
+# storage.mark-media             # until(2026-10-15) signed-URL reads deploying first

@@ -1,0 +1,3 @@
+# Secrets gitleaks found in git history that you have reviewed and dealt with
+# (rotated, revoked, or confirmed fake). One fingerprint per line, as gitleaks
+# prints it. Rotating the secret is the fix; this file only records that you did.

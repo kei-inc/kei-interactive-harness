@@ -5,6 +5,9 @@
 -- Lines are marked REVIEW where anon can write to a table with RLS off, which
 -- is the combination the audit reports as an exposure.
 
+-- Stop at the first error, so the completion marker at the end can only
+-- appear if every query before it actually succeeded.
+\set ON_ERROR_STOP on
 \pset pager off
 \pset tuples_only on
 \pset format unaligned

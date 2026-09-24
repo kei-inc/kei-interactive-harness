@@ -4,6 +4,8 @@
 #   check-migrations.sh            soft: report, never block   (pre-push)
 #   check-migrations.sh --strict   block on trunk problems      (CI, pull requests)
 #   check-migrations.sh --strict <base-ref>
+#   check-migrations.sh --remote <base-ref>   compare the repo with the database
+#                                              in SUPABASE_DB_URL (read-only)
 #
 # This never applies a migration to a real database. Supabase's GitHub
 # integration does that at merge, and should keep doing it. The one exception is
@@ -23,8 +25,9 @@ cd "$ROOT"
 [ -f "$ROOT/.harness/config.sh" ] && . "$ROOT/.harness/config.sh"
 
 RED=$'\033[31m'; YELLOW=$'\033[33m'; GREEN=$'\033[32m'; DIM=$'\033[2m'; RESET=$'\033[0m'
-STRICT=0; BASE=""
+STRICT=0; BASE=""; REMOTE=0
 [ "${1:-}" = "--strict" ] && { STRICT=1; BASE="${2:-}"; }
+[ "${1:-}" = "--remote" ] && { REMOTE=1; BASE="${2:-}"; }
 FAIL=0
 
 # Trunk problems block in strict mode and are notes otherwise.
@@ -40,6 +43,67 @@ DIR="supabase/migrations"
 [ -d "$DIR" ] || exit 0
 
 version_of() { basename "$1" | sed -nE 's/^([0-9]+)_.*\.sql$/\1/p'; }
+
+# ------------------------------------------------------------- remote mode ---
+# Compares the repo with a real database. Read-only, always: this never applies,
+# repairs, or writes anything. It reports; you decide. It never fails a build
+# either, since the state of the database is not the fault of the change under
+# review. It does fail if it could not read the database in CI, because a check
+# that silently read nothing has told you nothing.
+if [ "$REMOTE" -eq 1 ]; then
+  . "$HARNESS_LIB/scripts/_db.sh"
+  if ! resolve_db; then printf '%s\n' "${DIM}skipped: no database to compare against${RESET}"; exit 0; fi
+  export PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-10}"
+  OUT="$(run_sql "$HARNESS_LIB/sql/migrations-applied.sql" 2>&1)"; rc=$?
+  if ! printf '%s\n' "$OUT" | grep -q '^MARKER|harness|migrations-complete|'; then
+    if printf '%s' "$OUT" | grep -q 'schema_migrations" does not exist\|schema "supabase_migrations" does not exist'; then
+      note "this database has no migration history table"
+      hint "Nothing has ever been applied here with the Supabase CLI, so every migration"
+      hint "file looks pending. If the schema was built by hand or in the SQL editor, record"
+      hint "each migration as applied: supabase migration repair --status applied <version>"
+      exit 0
+    fi
+    printf '%s\n' "${RED}Could not read migration history from ${DB_SOURCE}.${RESET}"
+    printf '%s\n' "$OUT" | head -2 | sed 's/^/    /'
+    [ -n "${CI:-}" ] && exit 1; exit 0
+  fi
+  APPLIED="$(printf '%s\n' "$OUT" | grep -E '^[0-9]+$' | sort)"
+  ONDISK="$(ls "$DIR"/*.sql 2>/dev/null | while read -r f; do version_of "$f"; done | grep . | sort)"
+
+  # "Merged" means present at the merge base with the base branch. On a push
+  # to the default branch there is no separate base, so every file counts.
+  MERGED="$ONDISK"
+  if [ -n "$BASE" ] && MB="$(git merge-base HEAD "$BASE" 2>/dev/null)" && [ "$MB" != "$(git rev-parse HEAD)" ]; then
+    MERGED="$(git ls-tree --name-only "$MB" "$DIR/" 2>/dev/null | while read -r f; do version_of "$f"; done | grep . | sort)"
+  fi
+
+  PENDING_MERGED="$(comm -13 <(printf '%s\n' "$APPLIED") <(printf '%s\n' "$MERGED") | grep . || true)"
+  PENDING_NEW="$(comm -13 <(printf '%s\n' "$APPLIED" "$MERGED" | sort -u) <(printf '%s\n' "$ONDISK") | grep . || true)"
+  UNKNOWN="$(comm -23 <(printf '%s\n' "$APPLIED") <(printf '%s\n' "$ONDISK") | grep . || true)"
+
+  printf '%s\n' "${DIM}comparing with: ${DB_SOURCE}${RESET}"
+  if [ -n "$PENDING_MERGED" ]; then
+    note "merged migrations that have NOT been applied to this database"
+    printf '%s\n' "$PENDING_MERGED" | sed "s/^/${DIM}       /; s/$/${RESET}/"
+    hint "If you apply by hand:  supabase link --project-ref <ref>  then  supabase db push"
+    hint "If they were already run in the SQL editor, record them instead of re-running:"
+    hint "  supabase migration repair --status applied <version>"
+    [ -n "${CI:-}" ] && printf '%s\n' "::warning title=Migrations not applied::$(printf '%s' "$PENDING_MERGED" | tr '\n' ' ')"
+  fi
+  if [ -n "$PENDING_NEW" ]; then
+    printf '%s\n' "${DIM}new in this branch, will need applying after merge: $(printf '%s' "$PENDING_NEW" | tr '\n' ' ')${RESET}"
+  fi
+  if [ -n "$UNKNOWN" ]; then
+    note "the database records migrations that no file in this repo explains"
+    printf '%s\n' "$UNKNOWN" | sed "s/^/${DIM}       /; s/$/${RESET}/"
+    hint "Usually a migration applied from another branch that has not merged. If it"
+    hint "truly no longer exists: supabase migration repair --status reverted <version>"
+  fi
+  [ -z "$PENDING_MERGED$UNKNOWN" ] && printf '%s\n' "${GREEN}Database and repo agree on migration history.${RESET}"
+  hint "Changes made in the SQL editor never appear in migration history. To find"
+  hint "those, compare the schema itself:  supabase db diff --linked"
+  exit 0
+fi
 
 # ------------------------------------------------------------- file level ---
 FILES="$(ls "$DIR"/*.sql 2>/dev/null | sort)"

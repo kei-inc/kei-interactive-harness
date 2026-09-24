@@ -64,6 +64,88 @@ function usesSupabase() {
   } catch { return false; }
 }
 
+// --------------------------------------------------------- package manager --
+
+/** npm or pnpm, from the lockfile. Other managers fall back to npm commands. */
+function packageManager() {
+  if (fs.existsSync(path.join(CWD, 'pnpm-lock.yaml'))) return 'pnpm';
+  return 'npm';
+}
+const isPnpmWorkspace = () => fs.existsSync(path.join(CWD, 'pnpm-workspace.yaml'));
+
+/** The install command to show people, matching this project. */
+function installHint(tag) {
+  const spec = `github:kei-inc/kei-interactive-harness#${tag}`;
+  if (packageManager() === 'pnpm') return `pnpm add -D${isPnpmWorkspace() ? ' -w' : ''} ${spec}`;
+  return `npm i -D ${spec}`;
+}
+
+function readPackageJson() {
+  try { return JSON.parse(fs.readFileSync(path.join(CWD, 'package.json'), 'utf8')); } catch { return {}; }
+}
+
+/** The pnpm version CI should install: the project's own, never a guess. */
+function pnpmVersionLine() {
+  const pm = readPackageJson().packageManager || '';
+  if (pm.startsWith('pnpm@')) return null;   // pnpm/action-setup reads packageManager itself
+  try {
+    const v = execSync('pnpm --version', { cwd: CWD, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    if (/^\d+/.test(v)) return v.split('.')[0];
+  } catch {}
+  return '12';
+}
+
+function nodeVersionYaml() {
+  for (const f of ['.nvmrc', '.node-version']) {
+    if (fs.existsSync(path.join(CWD, f))) return `          node-version-file: ${f}`;
+  }
+  return '          node-version: 24';
+}
+
+function workflowVars() {
+  const pm = packageManager();
+  const setupNode = (cache) => [
+    '      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0',
+    '        with:',
+    nodeVersionYaml(),
+    `          cache: ${cache}`,
+  ];
+  if (pm === 'pnpm') {
+    const v = pnpmVersionLine();
+    return {
+      NODE_SETUP: [
+        '      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413  # v6.1.0',
+        ...(v ? ['        with:', `          version: ${v}   # set "packageManager" in package.json to control this`] : []),
+        ...setupNode('pnpm'),
+        '      - run: pnpm install --frozen-lockfile',
+      ].join('\n'),
+      H: 'pnpm exec harness', RUN: 'pnpm run --if-present', EXEC: 'pnpm exec',
+      DLX: 'pnpm dlx', OUTDATED: 'pnpm outdated --format json',
+    };
+  }
+  return {
+    NODE_SETUP: [...setupNode('npm'), '      - run: npm ci --prefer-offline --no-audit'].join('\n'),
+    H: 'npx harness', RUN: 'npm run --if-present', EXEC: 'npx',
+    DLX: 'npx --yes', OUTDATED: 'npm outdated --json',
+  };
+}
+
+/** Fill a workflow template for this project: package manager, Supabase. */
+function renderWorkflow(src) {
+  const keepSupabase = usesSupabase();
+  src = src.replace(/\n# \{\{IF_SUPABASE\}\}\n([\s\S]*?)\n# \{\{END_IF_SUPABASE\}\}\n?/g,
+    (_, body) => (keepSupabase ? '\n' + body + '\n' : '\n'));
+  const vars = workflowVars();
+  return src.replace(/\{\{([A-Z_]+)\}\}/g, (m, k) => (k in vars ? vars[k] : m));
+}
+
+/** What a managed file should contain in this project, header included. */
+function render(m) {
+  let src = fs.readFileSync(path.join(LIB, m.from), 'utf8');
+  if (m.to.startsWith('.github/workflows/')) src = renderWorkflow(src);
+  return stamp(src, m.comment);
+}
+
 /** Managed files that only make sense for some stacks. */
 const CONDITIONAL = {
   '.cursor/rules/15-supabase.mdc': usesSupabase,
@@ -88,6 +170,9 @@ const MANAGED = [
   ...fs.readdirSync(path.join(LIB, 'generated/workflows')).map((f) => ({
     from: `generated/workflows/${f}`, to: `.github/workflows/${f}`, comment: 'hash',
   })),
+  // A stable path gives semgrep stable rule IDs (harness.<rule>). Under
+  // node_modules, and under pnpm especially, the ID embeds the whole path.
+  { from: 'semgrep.yml', to: '.harness/semgrep.yml', comment: 'hash' },
 ];
 
 /** Written once at init. Sync never touches these again. */
@@ -100,6 +185,7 @@ const TEMPLATES = [
   { from: 'templates/REPAIR-QUEUE.md', to: 'docs/REPAIR-QUEUE.md' },
   { from: 'templates/allow-public-env.txt', to: '.harness/allow-public-env.txt' },
   { from: 'templates/rls-allow.txt', to: '.harness/rls-allow.txt' },
+  { from: 'templates/gitleaksignore', to: '.gitleaksignore' },
   { from: 'templates/next.config.headers.mjs', to: 'docs/next.config.headers.mjs' },
 ];
 
@@ -184,6 +270,13 @@ function init() {
 # (default) or apply them with 'supabase migration up'. Never touches any
 # database other than the local stack.
 # HARNESS_MIGRATE_LOCAL=report
+
+# Semgrep rules to silence in this project, by short id, space separated.
+# HARNESS_SEMGREP_EXCLUDE="missing-timeout-on-outbound-fetch"
+
+# In CI, a Supabase project with no SUPABASE_DB_URL secret FAILS the database
+# job rather than passing while auditing nothing. Set 0 to opt out on purpose.
+# HARNESS_REQUIRE_DB_AUDIT=1
 
 # A site with no user accounts at all (marketing, docs, a portfolio) has no
 # identity to check. Mark each route or action // @public-route with a reason,
@@ -289,7 +382,7 @@ function syncManaged(quiet) {
   const prev = readManifest();
   if (!quiet) {
     const from = prev ? `v${prev.version}` : 'nothing';
-    console.log(c.b(`Managed files`) + c.d(` (${from} -> v${PKG.version}, regenerated every sync)`));
+    console.log(c.b(`Managed files`) + c.d(` (${from} -> v${PKG.version}, regenerated every sync; ${packageManager()}${usesSupabase() ? ', supabase' : ''})`));
   }
   const files = {};
   let changed = 0;
@@ -304,8 +397,7 @@ function syncManaged(quiet) {
       }
       continue;
     }
-    const src = fs.readFileSync(path.join(LIB, m.from), 'utf8');
-    const out = stamp(src, m.comment);
+    const out = render(m);
     const dest = path.join(CWD, m.to);
     const existed = fs.existsSync(dest);
     const current = existed ? fs.readFileSync(dest, 'utf8') : '';
@@ -362,6 +454,8 @@ function doctor() {
     console.log(`  ${c.y(`behind: run npx harness sync to move ${m.version} -> ${PKG.version}`)}`);
   }
 
+  console.log(`  package manager   ${packageManager()}${isPnpmWorkspace() ? ' (workspace)' : ''}`);
+  console.log(`  update command    ${installHint('<tag>')} && npx harness sync`);
   console.log(`  supabase          ${usesSupabase() ? 'yes' : c.d('no  (Supabase rule and database audit are off; they switch on at the next sync once it is added)')}`);
 
   console.log('\n' + c.b('  Managed') + c.d(' (regenerated on sync)'));
@@ -370,7 +464,7 @@ function doctor() {
     if (CONDITIONAL[mf.to] && !CONDITIONAL[mf.to]()) continue;
     const dest = path.join(CWD, mf.to);
     if (!fs.existsSync(dest)) { console.log(`    ${c.r('missing')} ${mf.to}`); drifted++; continue; }
-    const want = stamp(fs.readFileSync(path.join(LIB, mf.from), 'utf8'), mf.comment);
+    const want = render(mf);
     if (fs.readFileSync(dest, 'utf8') !== want) {
       console.log(`    ${c.y('edited ')} ${mf.to} ${c.d('(sync will overwrite)')}`);
       drifted++;
@@ -443,7 +537,7 @@ function fleet(dir) {
     console.log(`  ${mark}  ${v.padEnd(10)} ${name}`);
   }
   if (!found) console.log(c.d('  No harness projects found. Pass a directory: npx harness fleet ~/work'));
-  else console.log('\n' + c.d('  Update one:  cd <project> && npm i -D github:kei-inc/kei-interactive-harness#<tag> && npx harness sync'));
+  else console.log('\n' + c.d('  Update one:  cd <project> && <npm i -D | pnpm add -D -w> github:kei-inc/kei-interactive-harness#<tag> && npx harness sync'));
 }
 
 // ------------------------------------------------------------------- eject --
@@ -481,17 +575,31 @@ function eject() {
     for (const [a, b] of pairs) t = t.split(a).join(b);
     fs.writeFileSync(f, t);
   };
-  const local = 'HARNESS_LIB=./harness bash harness/scripts/harness.sh';
-  rewire('.husky/pre-commit', [['./node_modules/.bin/harness quick', `${local} quick`]]);
-  rewire('.husky/pre-push', [['./node_modules/.bin/harness check', `${local} check`]]);
-  for (const wf of ['ci.yml', 'nightly.yml']) {
-    rewire(`.github/workflows/${wf}`, [
-      ['npx harness boundaries', 'HARNESS_LIB=./harness bash harness/scripts/check-boundaries.sh'],
-      ['npx harness stack', 'HARNESS_LIB=./harness bash harness/scripts/check-stack.sh'],
-      ['npx harness rls', 'HARNESS_LIB=./harness bash harness/scripts/check-rls.sh'],
-      ['npx harness ratchet', 'HARNESS_LIB=./harness bash harness/scripts/ratchet.sh'],
-      ['$(npx harness lib)', './harness'],
-    ]);
+  // A small dispatcher stands in for the CLI, so every call site keeps its shape.
+  write('harness/run.sh', `#!/usr/bin/env bash
+# Stands in for the harness CLI after eject.
+export HARNESS_LIB="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+export HARNESS_PROJECT_ROOT="\${HARNESS_PROJECT_ROOT:-$(pwd)}"
+cmd="\$1"; shift || true
+case "\$cmd" in
+  quick|check|full) exec bash "\$HARNESS_LIB/scripts/harness.sh" "\$cmd" ;;
+  boundaries) exec bash "\$HARNESS_LIB/scripts/check-boundaries.sh" "\$@" ;;
+  stack)      exec bash "\$HARNESS_LIB/scripts/check-stack.sh" "\$@" ;;
+  rls)        exec bash "\$HARNESS_LIB/scripts/check-rls.sh" "\$@" ;;
+  grants)     exec bash "\$HARNESS_LIB/scripts/grants.sh" "\$@" ;;
+  migrations) exec bash "\$HARNESS_LIB/scripts/check-migrations.sh" "\$@" ;;
+  semgrep)    exec bash "\$HARNESS_LIB/scripts/semgrep.sh" "\$@" ;;
+  ratchet)    exec bash "\$HARNESS_LIB/scripts/ratchet.sh" "\$@" ;;
+  *) echo "usage: harness/run.sh <quick|check|full|boundaries|stack|rls|grants|migrations|semgrep|ratchet>"; exit 2 ;;
+esac
+`, true);
+  const pairs = [
+    ['./node_modules/.bin/harness', 'bash harness/run.sh'],
+    ['pnpm exec harness', 'bash harness/run.sh'],
+    ['npx harness', 'bash harness/run.sh'],
+  ];
+  for (const f of ['.husky/pre-commit', '.husky/pre-push', '.github/workflows/ci.yml', '.github/workflows/nightly.yml']) {
+    rewire(f, pairs);
   }
   console.log(c.g('  Hooks and workflows rewired to ./harness/'));
 
@@ -502,7 +610,7 @@ function eject() {
   console.log(c.g('  Managed headers removed; every file is yours now.'));
   console.log('\n' + c.y('  This project will no longer receive updates.'));
   console.log(c.d('  Remove the dependency: npm uninstall kei-interactive-harness'));
-  console.log(c.d('  Then run checks with:  HARNESS_LIB=./harness bash harness/scripts/harness.sh'));
+  console.log(c.d('  Then run checks with:  bash harness/run.sh check'));
 }
 
 // ------------------------------------------------------------------- checks --
@@ -533,6 +641,7 @@ switch (cmd) {
   case 'rls': run('check-rls.sh', rest); break;
   case 'grants': run('grants.sh', rest); break;
   case 'migrations': run('check-migrations.sh', rest); break;
+  case 'semgrep': run('semgrep.sh', rest); break;
 
   case 'lib': console.log(LIB); break;
   case 'version': case '--version': console.log(PKG.version); break;
@@ -562,5 +671,6 @@ switch (cmd) {
     rls             audit the live database perimeter
     grants          print today's Data API grants as a migration
     migrations      migration order, drift, and local database state
+    semgrep         static analysis: new findings only (--pr, --push, --sweep)
 `);
 }

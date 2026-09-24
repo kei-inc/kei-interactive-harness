@@ -16,5 +16,9 @@ if ! git diff --cached --quiet -- .harness/ratchet.txt 2>/dev/null; then
 fi
 
 # Project-specific additions (commitlint, custom scripts, anything the harness
-# does not do) go in commit-msg.local, which sync never touches.
-[ -f "$(dirname "$0")/commit-msg.local" ] && . "$(dirname "$0")/commit-msg.local"
+# does not do) go in commit-msg.local, which sync never touches. Husky runs hooks with
+# `sh -e`, so the .local file's last command decides the hook's result; end it
+# with `true` if its last line is a test that may be false.
+if [ -f "$(dirname "$0")/commit-msg.local" ]; then
+  . "$(dirname "$0")/commit-msg.local"
+fi

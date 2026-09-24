@@ -14,6 +14,9 @@
 -- Output is pipe-delimited: severity|check|object|detail
 -- ERROR rows fail CI. WARN rows are reported and never fail.
 
+-- Stop at the first error, so the completion marker at the end can only
+-- appear if every query before it actually succeeded.
+\set ON_ERROR_STOP on
 \pset pager off
 \pset tuples_only on
 \pset format unaligned

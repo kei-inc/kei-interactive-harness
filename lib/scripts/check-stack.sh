@@ -82,7 +82,11 @@ fi
 if ! disabled route-handlers; then
 # --- 3. Route handlers are public by default. ------------------------------
 
-ROUTE_FILES="$(find app src/app -name 'route.ts' -o -name 'route.tsx' -o -name 'route.js' 2>/dev/null || true)"
+# Any route file under any app/ directory, so monorepos (apps/*/src/app/...)
+# are covered as well as a single app at the root.
+ROUTE_FILES="$(find . \( -name node_modules -o -name .next -o -name .git -o -name .turbo -o -name dist \) -prune -o \
+  -type f -path '*/app/*' \( -name 'route.ts' -o -name 'route.tsx' -o -name 'route.js' -o -name 'route.mjs' \) -print 2>/dev/null \
+  | sed 's|^\./||' || true)"
 for f in $ROUTE_FILES; do
   if ! grep -qE "$AUTH_RE|@public-route" "$f"; then
     block "route handler with no identity check: $f"
@@ -210,23 +214,27 @@ if ! disabled env-parity; then
 # Every variable the code reads should appear in .env.example, so that cloning
 # the repo tells you what you need rather than failing at runtime.
 
-if [ -f .env.example ]; then
+# Every .env.example in the repo counts, so a monorepo's apps/*/.env.example
+# files are all consulted. Names ending in _ are prefixes from template
+# strings (process.env.NEXT_PUBLIC_${name}), not variables.
+EXAMPLES="$(find . \( -name node_modules -o -name .git -o -name .next \) -prune -o -type f -name '.env.example' -print 2>/dev/null)"
+if [ -n "$EXAMPLES" ]; then
+  DECLARED="$(cat $EXAMPLES 2>/dev/null | sed -nE 's/^[[:space:]]*(export[[:space:]]+)?([A-Z0-9_]+)=.*/\2/p' | sort -u)"
   USED="$(grep -rhoE 'process\.env\.[A-Z0-9_]+' --include='*.ts' --include='*.tsx' \
           --include='*.js' --include='*.mjs' "${EXCLUDES[@]}" . 2>/dev/null \
-          | sed 's/process\.env\.//' | sort -u)"
+          | sed 's/process\.env\.//' | grep -v '_$' | sort -u)"
   MISSING=""
   for v in $USED; do
-    case "$v" in NODE_ENV|VERCEL*|CI|npm_*) continue ;; esac
-    grep -q "^${v}=" .env.example || MISSING="$MISSING $v"
+    case "$v" in NODE_ENV|VERCEL*|CI|NEXT_RUNTIME|npm_*) continue ;; esac
+    printf '%s\n' "$DECLARED" | grep -qx "$v" || MISSING="$MISSING $v"
   done
   if [ -n "$MISSING" ]; then
-    note "environment variables used in code but absent from .env.example:"
+    note "environment variables used in code but absent from every .env.example:"
     for v in $MISSING; do printf '%s\n' "       $v"; done
   fi
 else
   note "no .env.example. Create one so a fresh clone knows what it needs."
 fi
-
 fi
 
 echo

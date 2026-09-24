@@ -7,5 +7,9 @@
 ./node_modules/.bin/harness check
 
 # Project-specific additions (commitlint, custom scripts, anything the harness
-# does not do) go in pre-push.local, which sync never touches.
-[ -f "$(dirname "$0")/pre-push.local" ] && . "$(dirname "$0")/pre-push.local"
+# does not do) go in pre-push.local, which sync never touches. Husky runs hooks with
+# `sh -e`, so the .local file's last command decides the hook's result; end it
+# with `true` if its last line is a test that may be false.
+if [ -f "$(dirname "$0")/pre-push.local" ]; then
+  . "$(dirname "$0")/pre-push.local"
+fi
