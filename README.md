@@ -122,7 +122,7 @@ work of one.
 bin/harness.js         the CLI
 lib/rules/*.mdc        Cursor rules, materialised into projects
 lib/commands/*.md      the rituals (repair, threat, scale, backfill, preflight) and
-                       the branch loop (status, play, ship, land)
+                       the branch loop (status, play, ship, land, sync)
 lib/scripts/*.sh       all check logic, runs from node_modules
 lib/sql/*.sql          the row level security audit
 lib/semgrep.yml        curated ruleset

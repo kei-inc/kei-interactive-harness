@@ -184,6 +184,7 @@ need a terminal for it. Also only when I invoke them.
 | `/play` | Get onto `play` (creating it if needed) and bring it up to date with main |
 | `/ship` | Commit, surface what will block, push, and open or update the pull request into main |
 | `/land` | Merge the green pull request with a merge commit and bring `play` back in step |
+| `/sync` | Update to the latest harness release and merge template changes into project files |
 
 ## Commands
 

@@ -378,8 +378,27 @@ function addPackageScripts() {
 
 // -------------------------------------------------------------------- sync --
 
+/** Numeric compare of x.y.z strings: negative when a is older than b. */
+function cmpVersion(a, b) {
+  const pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return d;
+  }
+  return 0;
+}
+
 function syncManaged(quiet) {
   const prev = readManifest();
+  // An old tag re-run from shell history installs cleanly and would quietly
+  // rewrite every managed file backwards. Refuse unless it is deliberate.
+  if (prev && cmpVersion(PKG.version, prev.version) < 0 && !process.argv.includes('--allow-downgrade')) {
+    console.error(c.r(`This project is on v${prev.version}, but the installed harness is v${PKG.version}.`));
+    console.error('Syncing would downgrade it. Install the newer tag first:');
+    console.error(`  ${installHint('v' + prev.version)}`);
+    console.error(c.d('To roll back on purpose: npx harness sync --allow-downgrade'));
+    process.exit(1);
+  }
   if (!quiet) {
     const from = prev ? `v${prev.version}` : 'nothing';
     console.log(c.b(`Managed files`) + c.d(` (${from} -> v${PKG.version}, regenerated every sync; ${packageManager()}${usesSupabase() ? ', supabase' : ''})`));
@@ -450,8 +469,10 @@ function doctor() {
   console.log(c.b('kei-interactive-harness doctor') + '\n');
   console.log(`  package version   ${PKG.version}`);
   console.log(`  project synced at ${m ? m.version : c.r('never — run: npx harness init')}`);
-  if (m && m.version !== PKG.version) {
+  if (m && cmpVersion(m.version, PKG.version) < 0) {
     console.log(`  ${c.y(`behind: run npx harness sync to move ${m.version} -> ${PKG.version}`)}`);
+  } else if (m && cmpVersion(m.version, PKG.version) > 0) {
+    console.log(`  ${c.r(`installed package is older than this project; reinstall: ${installHint('v' + m.version)}`)}`);
   }
 
   console.log(`  package manager   ${packageManager()}${isPnpmWorkspace() ? ' (workspace)' : ''}`);
@@ -651,6 +672,7 @@ switch (cmd) {
   Setting up
     init            install into this project
     sync            regenerate managed files from the installed version
+                    (refuses to downgrade; --allow-downgrade to roll back)
     adopt <file>    take a project template added since you installed
     eject           copy everything in and stop receiving updates
 

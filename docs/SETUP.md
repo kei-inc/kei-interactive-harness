@@ -674,8 +674,15 @@ patch, and sync.
 
 ## 7. Updating a project to a newer harness version
 
-`npm update` does not move a pin that points at a GitHub tag. Install the new
-tag explicitly, which rewrites the line in `package.json`:
+The easy way: on `play`, type `/sync` in Cursor chat. It looks up the latest
+release itself, installs and syncs it, offers to merge template changes into
+`AGENTS.md` and `docs/WORKFLOW.md`, and commits only the update.
+
+By hand: `npm update` does not move a pin that points at a GitHub tag. Install
+the new tag explicitly, which rewrites the line in `package.json`. Copy the tag
+from this guide rather than from shell history; re-running an old install line
+is the easy way to downgrade a project. `harness sync` refuses to go backwards
+unless you pass `--allow-downgrade`.
 
 ```bash
 npm i -D github:kei-inc/kei-interactive-harness#v1.4.0
@@ -802,6 +809,7 @@ must be paid or acknowledged.
 | PR fails on `SPIKE` | Finish the spike or remove it from the branch. |
 | PR fails on ratchet | Fix the debt, or `npx harness ratchet --accept` and say why. |
 | `gh pr merge --merge` refused | Merge commits are off for the repo. Turn on "Allow merge commits" (section 4). |
+| Sync refuses: "would downgrade it" | An older tag got installed, usually an install line re-run from shell history. Install the tag it names, or use `/sync`. |
 | Docs show an old harness tag | The release was bumped by hand. Run `node scripts/sync-version.js` in the harness repo and commit. |
 | Doctor says "edited" on a managed file | Someone edited it. Move the change to a `90-*` rule, `.local` hook, or `config.sh`, then sync. |
 | RLS audit reports a table you meant to be public | Add it to `.harness/rls-allow.txt` with a reason. |
