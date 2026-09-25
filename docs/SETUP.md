@@ -767,7 +767,11 @@ returns to `play`, `/status` shows where things stand, `/ship` opens the pull
 request, and `/land` merges it and brings `play` back in step. `/sync` updates
 the harness, `/doctor` checks its health, `/debt` shows where the ratchet
 debt lives and what is cheap to pay down, and `/authtest` writes tests proving
-every route handler and server action turns away the wrong caller. They need the GitHub CLI signed in
+every route handler and server action turns away the wrong caller. `/offline`
+tests that work captured offline arrives exactly once, `/perf` adds Speed
+Insights, a bundle budget and a slow-query report, and `/monitor` sets up Sentry.
+The stack check flags, without failing, any Next.js app that has no Sentry or
+no Speed Insights. They need the GitHub CLI signed in
 (`gh auth status`).
 `docs/WORKFLOW.md` in each project walks through the full cycle, including what
 counts as a spike.

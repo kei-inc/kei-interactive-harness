@@ -72,7 +72,10 @@ human pass. Check current Supabase documentation for defaults, since these chang
       against the deployed environment.
 - [ ] Logs carry no tokens, passwords, or full request bodies.
 - [ ] There is a way to find out that something broke that does not involve a
-      user emailing you.
+      user emailing you: error monitoring with an alert on new production
+      issues (`/monitor`), verified by a test error on a preview.
+- [ ] Offline-capable apps have tests proving queued work arrives exactly once
+      (`/offline`).
 
 ## Report
 

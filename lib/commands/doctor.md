@@ -42,9 +42,11 @@ Report only what is wrong. For each, one line on the problem and one on the fix.
    this system, so offer to draft them from the code, asking me what the code
    cannot answer.
 5. **Checks with nothing to run.** `package.json` scripts doctor lists as
-   absent (`typecheck`, `lint`, `test:unit`, `test:e2e`, `build`, `size`) are
-   skipped silently by the hooks and CI. Note which, and whether the project has
-   the tool under another script name.
+   absent (`typecheck`, `lint`, `test:unit`, `test:e2e`, `build`, `size`) run
+   nothing: the hooks skip them, and CI passes them with a "Nothing ran"
+   warning. Note which, and whether the project has the tool under another
+   script name. No `size`: `/perf` sets up a budget. No `test:e2e` on an
+   offline-capable app: `/offline`.
 6. **Branch workflow.** On the default branch: suggest `/play`. No `play`
    branch at all: suggest `/play`. Merge commits disabled on GitHub: `/land`
    will fail; turn on "Allow merge commits". Head branches auto-deleted:
@@ -52,6 +54,9 @@ Report only what is wrong. For each, one line on the problem and one on the fix.
 7. **Database audit.** A Supabase project without a `SUPABASE_DB_URL`
    repository secret fails the CI database job. Say where to get the session
    pooler URI (Supabase, Project Settings, Database, Connection string).
+8. **Observability.** Any Next.js app without `@sentry/nextjs` (suggest
+   `/monitor`) or `@vercel/speed-insights` (suggest `/perf`), unless it is in
+   `HARNESS_OBSERVABILITY_SKIP`.
 
 ## Report
 

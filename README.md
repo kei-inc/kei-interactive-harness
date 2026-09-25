@@ -123,7 +123,8 @@ bin/harness.js         the CLI
 lib/rules/*.mdc        Cursor rules, materialised into projects
 lib/commands/*.md      the rituals (repair, threat, scale, backfill, preflight) and
                        the branch loop (status, play, ship, land) and upkeep
-                       (sync, doctor, debt) and authtest
+                       (sync, doctor, debt) and coverage (authtest, offline,
+                       perf, monitor)
 lib/scripts/*.sh       all check logic, runs from node_modules
 lib/sql/*.sql          the row level security audit
 lib/semgrep.yml        curated ruleset
@@ -159,6 +160,9 @@ handle the judgement around it. The hooks and CI run the checks on their own.
 | `/doctor` | harness health, with offers to fix |
 | `/debt` | the ratchet's long view: goals, worst files, cheap wins |
 | `/authtest` | tests proving every endpoint turns away the wrong caller |
+| `/offline` | tests proving offline work arrives exactly once |
+| `/perf` | Speed Insights, a bundle budget, slow queries |
+| `/monitor` | Sentry error monitoring, verified on a preview |
 | `/repair` `/threat` `/scale` `/backfill` `/preflight` | the rituals |
 
 The CLI, for terminals, hooks and CI:

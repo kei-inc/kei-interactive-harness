@@ -29,10 +29,13 @@ before committing; the boundary check rejects any spike marker there.
 
 The loop has commands: `/status`, `/play`, `/ship`, `/land`, plus `/sync`
 (harness updates), `/doctor` (harness health), `/debt` (the ratchet's long
-view) and `/authtest` (tests proving each endpoint turns away the wrong
-caller). When I ask where things stand, to open, merge, or move work between
-branches, to update or check the harness, about debt, or to test endpoint
-authorization, follow the matching command in `.cursor/commands/` rather than
+view), `/authtest` (tests proving each endpoint turns away the wrong caller),
+`/offline` (tests proving offline work arrives exactly once), `/perf`
+(Speed Insights, a bundle budget, slow queries) and `/monitor` (Sentry error
+monitoring). When I ask where things stand, to open, merge, or move work
+between branches, to update or check the harness, about debt, or to test
+authorization or offline behaviour, measure performance, or set up error
+monitoring, follow the matching command in `.cursor/commands/` rather than
 improvising.
 
 ## Marking rough work

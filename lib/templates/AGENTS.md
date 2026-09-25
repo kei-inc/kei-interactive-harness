@@ -153,6 +153,7 @@ apply everywhere.
 | Caching in a file that touches user identity | Put the user or tenant id in the cache key, then `// @cache-reviewed` |
 | A secret-looking name behind `NEXT_PUBLIC_` | Server env only; if it is genuinely public, list it in `.harness/allow-public-env.txt` |
 | A `process.env.X` missing from `.env.example` | Add it with a placeholder in the same change |
+| A Next.js app with no Sentry or Speed Insights (flagged, never blocks) | `/monitor` and `/perf` set them up |
 | Unbounded `.select()` | `.limit(n)` with a hard cap, or `.single()` |
 | A row spread into a response | Pick the fields |
 | `fetch` with no signal | `signal: AbortSignal.timeout(ms)` |
@@ -188,6 +189,9 @@ need a terminal for it. Also only when I invoke them.
 | `/doctor` | Health check: harness version, drift, unmerged files, blank docs, GitHub settings |
 | `/debt` | The ratchet's long view: goals, where the debt lives, cheap wins |
 | `/authtest` | Inventory route handlers and server actions, agree who may call each, and write tests proving the wrong caller is turned away |
+| `/offline` | Map the offline path, agree scenarios, and test that queued work survives and arrives exactly once |
+| `/perf` | Speed Insights for real users, a bundle budget for every build, and a slow-query report |
+| `/monitor` | Sentry in each app: server and browser errors, readable stack traces, no personal data, alerts |
 
 ## Commands
 

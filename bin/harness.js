@@ -283,6 +283,11 @@ function init() {
 # or turn the checks off for the whole project:
 # HARNESS_DISABLE="route-handlers server-actions"
 
+# Every Next.js app without Sentry or Speed Insights is flagged (never blocked).
+# Leave out apps that deliberately have neither, as dirs, space separated, or
+# turn the flag off with HARNESS_DISABLE="observability".
+# HARNESS_OBSERVABILITY_SKIP="apps/internal-tool"
+
 # Extra names that count as "this handler establishes identity", as a regex
 # alternation. The default already accepts requireUser, requireAuth, getUser,
 # getCurrentUser, authorize and verifyWebhook. Add your auth library's here.

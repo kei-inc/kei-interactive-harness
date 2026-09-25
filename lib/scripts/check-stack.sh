@@ -245,6 +245,37 @@ else
   note "no .env.example. Create one so a fresh clone knows what it needs."
 fi
 fi
+if ! disabled observability; then
+# --- 10. Knowing when production breaks, and when it gets slow. -------------
+# Never blocks: an app without these works, you just find out about problems
+# from users. Flagged in CI as well, so a green run does not hide the gap.
+#   HARNESS_OBSERVABILITY_SKIP   space-separated app dirs to leave out
+
+APPS="$(find . \( -name node_modules -o -name .git -o -name .next \) -prune -o -type f -name package.json -print 2>/dev/null \
+        | xargs grep -lE '"next"[[:space:]]*:' 2>/dev/null | sed 's|/package.json$||; s|^\./||; s|^\.$|.|' | sort)"
+NO_MONITOR=""; NO_SPEED=""
+for a in $APPS; do
+  case " ${HARNESS_OBSERVABILITY_SKIP:-} " in *" $a "*) continue ;; esac
+  grep -q '"@sentry/' "$a/package.json" || NO_MONITOR="$NO_MONITOR $a"
+  grep -q '"@vercel/speed-insights"' "$a/package.json" || NO_SPEED="$NO_SPEED $a"
+done
+if [ -n "$NO_MONITOR" ]; then
+  note "no error monitoring in:$NO_MONITOR"
+  printf '%s\n' "${DIM}       Production errors go unseen until someone reports them. Run /monitor.${RESET}"
+fi
+if [ -n "$NO_SPEED" ]; then
+  note "no Speed Insights in:$NO_SPEED"
+  printf '%s\n' "${DIM}       Real users' page speed is not measured. Run /perf.${RESET}"
+fi
+if [ -n "${GITHUB_ACTIONS:-}" ]; then
+  for a in $NO_MONITOR; do
+    printf '%s\n' "::warning title=No error monitoring: $a::Production errors in $a go unseen until someone reports them. Run /monitor."
+  done
+  for a in $NO_SPEED; do
+    printf '%s\n' "::warning title=No Speed Insights: $a::Real users' page speed in $a is not measured. Run /perf."
+  done
+fi
+fi
 
 echo
 if [ "$FAIL" -eq 0 ]; then

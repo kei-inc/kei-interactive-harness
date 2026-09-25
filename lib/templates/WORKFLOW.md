@@ -276,6 +276,9 @@ The branch loop runs from Cursor chat:
 | `/doctor` | something feels off, or once in a while: is the harness healthy here |
 | `/debt` | between batches: where the debt is and what is cheap to pay down |
 | `/authtest` | after adding endpoints: prove each one turns away the wrong caller |
+| `/offline` | after changing the offline path: prove queued work arrives exactly once |
+| `/perf` | once to set up measuring, then when something feels slow |
+| `/monitor` | once per app, before real users: Sentry, verified on a preview |
 
 The same thing by hand, if you are in a terminal anyway:
 
