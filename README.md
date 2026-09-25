@@ -122,7 +122,8 @@ work of one.
 bin/harness.js         the CLI
 lib/rules/*.mdc        Cursor rules, materialised into projects
 lib/commands/*.md      the rituals (repair, threat, scale, backfill, preflight) and
-                       the branch loop (status, play, ship, land, sync)
+                       the branch loop (status, play, ship, land) and upkeep
+                       (sync, doctor, debt)
 lib/scripts/*.sh       all check logic, runs from node_modules
 lib/sql/*.sql          the row level security audit
 lib/semgrep.yml        curated ruleset
@@ -144,6 +145,22 @@ expects. It needs only Docker Desktop running and leaves nothing behind. The sem
 can be validated with `semgrep --validate --config lib/semgrep.yml`.
 
 ## Commands
+
+Day to day, use the slash commands in Cursor chat. They call the CLI below and
+handle the judgement around it. The hooks and CI run the checks on their own.
+
+| Slash command | |
+|---|---|
+| `/status` | where things stand: branch, spikes, debt, open pull request |
+| `/play` | get onto `play` and bring it up to date |
+| `/ship` | open or update the pull request into main |
+| `/land` | merge it with a merge commit, carry on |
+| `/sync` | update to the latest harness release |
+| `/doctor` | harness health, with offers to fix |
+| `/debt` | the ratchet's long view: goals, worst files, cheap wins |
+| `/repair` `/threat` `/scale` `/backfill` `/preflight` | the rituals |
+
+The CLI, for terminals, hooks and CI:
 
 | | |
 |---|---|

@@ -273,6 +273,8 @@ The branch loop runs from Cursor chat:
 | `/ship` | a batch has settled: push and open the pull request into main |
 | `/land` | the pull request is green: merge it and carry on |
 | `/sync` | a new harness release is out: update to it on `play` |
+| `/doctor` | something feels off, or once in a while: is the harness healthy here |
+| `/debt` | between batches: where the debt is and what is cheap to pay down |
 
 The same thing by hand, if you are in a terminal anyway:
 

@@ -185,6 +185,8 @@ need a terminal for it. Also only when I invoke them.
 | `/ship` | Commit, surface what will block, push, and open or update the pull request into main |
 | `/land` | Merge the green pull request with a merge commit and bring `play` back in step |
 | `/sync` | Update to the latest harness release and merge template changes into project files |
+| `/doctor` | Health check: harness version, drift, unmerged files, blank docs, GitHub settings |
+| `/debt` | The ratchet's long view: goals, where the debt lives, cheap wins |
 
 ## Commands
 

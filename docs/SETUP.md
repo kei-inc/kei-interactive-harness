@@ -760,8 +760,10 @@ main` catches `play` up after an urgent fix pushed straight to `main`.
 
 All of that also runs from Cursor chat, with no terminal: `/play` creates or
 returns to `play`, `/status` shows where things stand, `/ship` opens the pull
-request, and `/land` merges it and brings `play` back in step. They need the
-GitHub CLI signed in (`gh auth status`).
+request, and `/land` merges it and brings `play` back in step. `/sync` updates
+the harness, `/doctor` checks its health, and `/debt` shows where the ratchet
+debt lives and what is cheap to pay down. They need the GitHub CLI signed in
+(`gh auth status`).
 `docs/WORKFLOW.md` in each project walks through the full cycle, including what
 counts as a spike.
 

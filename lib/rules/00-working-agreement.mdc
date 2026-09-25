@@ -27,10 +27,11 @@ Day-to-day work happens on a long-lived `play` branch, never directly on
 merge commit. If you find yourself on `main` with changes to make, say so
 before committing; the boundary check rejects any spike marker there.
 
-The loop has commands: `/status`, `/play`, `/ship`, `/land`, and `/sync` for
-harness updates. When I ask where things stand, to open, merge, or move work
-between branches, or to update the harness, follow the matching command in
-`.cursor/commands/` rather than improvising git steps.
+The loop has commands: `/status`, `/play`, `/ship`, `/land`, plus `/sync`
+(harness updates), `/doctor` (harness health) and `/debt` (the ratchet's long
+view). When I ask where things stand, to open, merge, or move work between
+branches, to update or check the harness, or about debt, follow the matching
+command in `.cursor/commands/` rather than improvising.
 
 ## Marking rough work
 
