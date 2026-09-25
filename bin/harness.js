@@ -119,13 +119,13 @@ function workflowVars() {
         ...setupNode('pnpm'),
         '      - run: pnpm install --frozen-lockfile',
       ].join('\n'),
-      H: 'pnpm exec harness', RUN: 'pnpm run --if-present', EXEC: 'pnpm exec',
+      H: 'pnpm exec harness', EXEC: 'pnpm exec',
       DLX: 'pnpm dlx', OUTDATED: 'pnpm outdated --format json',
     };
   }
   return {
     NODE_SETUP: [...setupNode('npm'), '      - run: npm ci --prefer-offline --no-audit'].join('\n'),
-    H: 'npx harness', RUN: 'npm run --if-present', EXEC: 'npx',
+    H: 'npx harness', EXEC: 'npx',
     DLX: 'npx --yes', OUTDATED: 'npm outdated --json',
   };
 }
@@ -636,6 +636,30 @@ esac
 
 // ------------------------------------------------------------------- checks --
 
+/**
+ * Run a package.json script, or say plainly that nothing ran. A CI step that
+ * skipped everything must not look the same as one that tested something, so
+ * in GitHub Actions a missing script leaves a warning on the run and a line in
+ * the job summary. It still passes: absence is a gap to see, not a failure.
+ */
+function runScript(name) {
+  if (!name) { console.error('usage: harness run <script>'); process.exit(2); }
+  if (!(readPackageJson().scripts || {})[name]) {
+    const msg = `No "${name}" script in package.json, so nothing ran.`;
+    if (process.env.GITHUB_ACTIONS) {
+      console.log(`::warning title=Nothing ran: ${name}::${msg} This step passed without checking anything.`);
+      if (process.env.GITHUB_STEP_SUMMARY) {
+        fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+          `- :warning: **${name}**: nothing ran (no \`${name}\` script in package.json)\n`);
+      }
+    }
+    console.log(c.y(`skipped: ${msg}`));
+    process.exit(0);
+  }
+  const r = spawnSync(packageManager(), ['run', name], { stdio: 'inherit', cwd: CWD });
+  process.exit(r.status === null ? 1 : r.status);
+}
+
 function run(script, args) {
   const r = spawnSync('bash', [path.join(LIB, 'scripts', script), ...args], {
     stdio: 'inherit',
@@ -663,6 +687,7 @@ switch (cmd) {
   case 'grants': run('grants.sh', rest); break;
   case 'migrations': run('check-migrations.sh', rest); break;
   case 'semgrep': run('semgrep.sh', rest); break;
+  case 'run': runScript(rest[0]); break;
 
   case 'lib': console.log(LIB); break;
   case 'version': case '--version': console.log(PKG.version); break;
@@ -694,5 +719,6 @@ switch (cmd) {
     grants          print today's Data API grants as a migration
     migrations      migration order, drift, and local database state
     semgrep         static analysis: new findings only (--pr, --push, --sweep)
+    run <script>    run a package.json script; flags it in CI when there is none
 `);
 }

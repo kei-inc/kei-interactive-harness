@@ -187,6 +187,7 @@ need a terminal for it. Also only when I invoke them.
 | `/sync` | Update to the latest harness release and merge template changes into project files |
 | `/doctor` | Health check: harness version, drift, unmerged files, blank docs, GitHub settings |
 | `/debt` | The ratchet's long view: goals, where the debt lives, cheap wins |
+| `/authtest` | Inventory route handlers and server actions, agree who may call each, and write tests proving the wrong caller is turned away |
 
 ## Commands
 

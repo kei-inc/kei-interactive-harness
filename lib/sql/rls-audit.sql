@@ -12,7 +12,9 @@
 -- authenticated can actually reach the table. Every check below is grant-aware.
 --
 -- Output is pipe-delimited: severity|check|object|detail
--- ERROR rows fail CI. WARN rows are reported and never fail.
+-- ERROR rows fail CI: anything that exposes data, and anything that breaks the
+-- app's access to a table (cheap to fix now, baffling to debug later in a fresh
+-- environment). WARN rows are reported and never fail.
 
 -- Stop at the first error, so the completion marker at the end can only
 -- appear if every query before it actually succeeded.
@@ -119,7 +121,7 @@ findings as (
   -- so every Data API call from that role fails with 42501 permission denied.
   -- This is exactly what a migration written before the grants change produces
   -- when replayed into a fresh environment.
-  select 'WARN', 'policy_without_grant', fq || ' (' || string_agg(distinct r.role, ', ') || ')',
+  select 'ERROR', 'policy_without_grant', fq || ' (' || string_agg(distinct r.role, ', ') || ')',
          'Policies exist for this role but it has no grant, so its Data API calls fail with 42501. Add an explicit grant in a migration.'
   from pol
   cross join lateral (values ('anon', reaches_anon and not anon_any),
@@ -129,7 +131,7 @@ findings as (
 
   union all
 
-  select 'WARN', 'rls_no_policies', fq,
+  select 'ERROR', 'rls_no_policies', fq,
          'RLS is on but no policies exist, so the Data API returns nothing from this table.'
   from tbl t
   where relkind in ('r', 'p') and relrowsecurity and (anon_any or auth_any)

@@ -275,6 +275,7 @@ The branch loop runs from Cursor chat:
 | `/sync` | a new harness release is out: update to it on `play` |
 | `/doctor` | something feels off, or once in a while: is the harness healthy here |
 | `/debt` | between batches: where the debt is and what is cheap to pay down |
+| `/authtest` | after adding endpoints: prove each one turns away the wrong caller |
 
 The same thing by hand, if you are in a terminal anyway:
 

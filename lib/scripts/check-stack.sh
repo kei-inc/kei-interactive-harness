@@ -152,8 +152,17 @@ for m in supabase/migrations/*.sql; do
   bulk=0
   grep -qiE 'grant[^;]+on[[:space:]]+all[[:space:]]+tables[[:space:]]+in[[:space:]]+schema[[:space:]]+public' "$m" && bulk=1
   if ! grep -q '@no-data-api' "$m" && [ "$bulk" -eq 0 ]; then
+    # Every table any GRANT in this migration names. Read whole statements, not
+    # lines: one grant commonly spans several lines and lists several tables.
+    granted="$(sed 's/--.*$//' "$m" | tr '\n' ' ' | tr ';' '\n' | awk '
+      { s = tolower($0) }
+      s ~ /^[ \t]*grant[ \t]/ && s ~ /[ \t]on[ \t]/ && s ~ /[ \t]to[ \t]/ {
+        sub(/^.*[ \t]on[ \t]+/, "", s); sub(/[ \t]+to[ \t].*$/, "", s); sub(/^table[ \t]+/, "", s)
+        n = split(s, parts, ",")
+        for (i = 1; i <= n; i++) { p = parts[i]; gsub(/[ \t"]/, "", p); sub(/^public\./, "", p); print p }
+      }')"
     for t in $tables; do
-      if ! grep -qiE "grant[^;]+on[[:space:]]+(table[[:space:]]+)?(public\.)?\"?${t}\"?[[:space:]]+to" "$m"; then
+      if ! printf '%s\n' "$granted" | grep -qix "$t"; then
         note "table $t has no grant in $m"
         printf '%s\n' "${DIM}       Without one, supabase-js cannot reach it (42501). Add e.g.${RESET}"
         printf '%s\n' "${DIM}       grant select, insert, update, delete on public.$t to authenticated;${RESET}"

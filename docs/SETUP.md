@@ -386,7 +386,11 @@ SUPABASE_DB_URL="postgres://..." npx harness rls
 
 An `auto_expose_default` warning means the project is still on the old
 auto-grant default, which is expected before the cutover. `policy_without_grant`
-means a table already has policies but is missing a grant.
+means a table already has policies but is missing a grant, and `rls_no_policies`
+means RLS is on with no policies, so the app reads nothing. Both are errors
+that fail CI: they break access rather than expose data, but they are cheap to
+fix now and confusing to debug later in a fresh environment. Fix them in a
+migration, or allowlist a deliberate one in `.harness/rls-allow.txt`.
 
 ```bash
 SUPABASE_DB_URL="postgres://..." npx harness grants \
@@ -761,8 +765,9 @@ main` catches `play` up after an urgent fix pushed straight to `main`.
 All of that also runs from Cursor chat, with no terminal: `/play` creates or
 returns to `play`, `/status` shows where things stand, `/ship` opens the pull
 request, and `/land` merges it and brings `play` back in step. `/sync` updates
-the harness, `/doctor` checks its health, and `/debt` shows where the ratchet
-debt lives and what is cheap to pay down. They need the GitHub CLI signed in
+the harness, `/doctor` checks its health, `/debt` shows where the ratchet
+debt lives and what is cheap to pay down, and `/authtest` writes tests proving
+every route handler and server action turns away the wrong caller. They need the GitHub CLI signed in
 (`gh auth status`).
 `docs/WORKFLOW.md` in each project walks through the full cycle, including what
 counts as a spike.

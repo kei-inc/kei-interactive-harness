@@ -33,7 +33,13 @@ jobs:
 
       - name: Dead code and unused dependencies
         continue-on-error: true
-        run: {{EXEC}} knip --reporter json > knip.json || true
+        run: |
+          if grep -q '"knip"' package.json; then
+            {{EXEC}} knip --reporter json > knip.json || true
+          else
+            echo "::warning title=Nothing ran: knip::knip is not installed, so dead code and unused dependencies were not checked."
+            echo "- :warning: **knip**: nothing ran (not installed)" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Ratchet trend
         run: {{H}} ratchet --show | tee ratchet-trend.txt

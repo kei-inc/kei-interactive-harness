@@ -6,7 +6,7 @@
 --   createdb harness_test && psql harness_test -f test/rls-fixture.sql
 --   SUPABASE_DB_URL=postgres:///harness_test HARNESS_SUPABASE=on bash lib/scripts/check-rls.sh
 --
--- Expected: 10 ERROR, 4 WARN, listed at the bottom of this file.
+-- Expected: 12 ERROR, 2 WARN, listed at the bottom of this file.
 
 -- Roles are cluster-wide, so tolerate them already existing from a prior run.
 do $$ begin
@@ -71,15 +71,16 @@ create policy orders_own on public.orders for select using ((select auth.uid()) 
 create table public.internal_jobs(id int);
 revoke all on public.internal_jobs from anon, authenticated, service_role;
 
--- Expected ERROR (10):
+-- Expected ERROR (12):
 --   anon_write_policy           open_wide (anyone_insert)
 --   auth_users_exposed          user_emails
 --   definer_without_search_path sneaky
 --   policy_always_true          open_wide (anyone), open_wide (anyone_insert), plans (plans_read)
+--   policy_without_grant        orders
 --   rls_disabled                comments, leaked
+--   rls_no_policies             locked
 --   view_bypasses_rls           user_emails
 --   public_bucket               avatars
--- Expected WARN (4):
---   auto_expose_default, policy_without_grant (orders), rls_no_policies (locked),
---   unindexed_foreign_key (comments)
+-- Expected WARN (2):
+--   auto_expose_default, unindexed_foreign_key (comments)
 -- Expected silence: notes, my_notes, careful, tasks, internal_jobs, private-docs

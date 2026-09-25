@@ -47,12 +47,14 @@ jobs:
       - name: Migrations (order, and no edits to merged ones)
         if: github.event_name == 'pull_request' && hashFiles('supabase/migrations/*.sql') != ''
         run: {{H}} migrations --strict "origin/${BASE_REF}"
+      # `harness run` passes when a script is missing but leaves a warning on
+      # the run, so a step that checked nothing never looks like one that did.
       - name: Types
-        run: {{RUN}} typecheck
+        run: {{H}} run typecheck
       - name: Lint
-        run: {{RUN}} lint
+        run: {{H}} run lint
       - name: Unit tests
-        run: {{RUN}} test:unit
+        run: {{H}} run test:unit
 
   security:
     runs-on: ubuntu-latest
@@ -100,9 +102,10 @@ jobs:
 {{NODE_SETUP}}
       # In a monorepo, the root build script should build every app (for
       # example "build": "turbo run build").
-      - run: {{RUN}} build
+      - name: Build
+        run: {{H}} run build
       - name: Bundle budget
-        run: {{RUN}} size
+        run: {{H}} run size
 
   e2e:
     if: github.event_name == 'pull_request'
@@ -115,7 +118,8 @@ jobs:
       - name: Browsers (only if the project has e2e tests)
         if: hashFiles('**/playwright.config.*') != ''
         run: {{EXEC}} playwright install --with-deps chromium
-      - run: {{RUN}} test:e2e
+      - name: End to end tests
+        run: {{H}} run test:e2e
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         if: failure()
         with:

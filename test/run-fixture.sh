@@ -9,8 +9,8 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NAME="harness-fixture-$$"
 PORT="${FIXTURE_PORT:-54399}"
-EXPECT_ERRORS=10
-EXPECT_WARNS=4
+EXPECT_ERRORS=12
+EXPECT_WARNS=2
 
 docker info >/dev/null 2>&1 || { echo "Docker is not running. Start Docker Desktop and retry."; exit 1; }
 

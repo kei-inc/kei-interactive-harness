@@ -154,7 +154,7 @@ done <<< "$ALL"
 
 echo
 if [ "$ERRORS" -gt 0 ]; then
-  printf '%s\n' "${RED}${ERRORS} database finding(s) that expose data.${RESET}"
+  printf '%s\n' "${RED}${ERRORS} database finding(s) that expose data or break access to it.${RESET}"
   printf '%s\n' "Fix these in a migration, not in the dashboard, so the fix is in git."
   exit 1
 fi
