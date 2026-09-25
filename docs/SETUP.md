@@ -93,13 +93,13 @@ first prompt, which is the cheapest moment to get RLS on a table or a key into a
 ```bash
 npx create-next-app@latest my-app
 cd my-app
-npm i -D husky github:kei-inc/kei-interactive-harness#v1.5.0
+npm i -D husky github:kei-inc/kei-interactive-harness#v1.6.0
 npx harness init
 npx harness ratchet
 ```
 
 With pnpm, the install line is
-`pnpm add -D husky github:kei-inc/kei-interactive-harness#v1.5.0`, and in a pnpm
+`pnpm add -D husky github:kei-inc/kei-interactive-harness#v1.6.0`, and in a pnpm
 workspace add `-w` so it installs at the root.
 
 **Do not run `npx husky init`.** It writes its own `pre-commit` file and would
@@ -156,13 +156,13 @@ If the project is a monorepo (several apps in one repo), run everything from the
 ### Step 2: install the harness
 
 ```bash
-npm i -D husky github:kei-inc/kei-interactive-harness#v1.5.0
+npm i -D husky github:kei-inc/kei-interactive-harness#v1.6.0
 ```
 
 If the project already has husky, npm simply leaves it in place.
 
 If the project uses pnpm (there is a `pnpm-lock.yaml`), use
-`pnpm add -D husky github:kei-inc/kei-interactive-harness#v1.5.0`. In a pnpm
+`pnpm add -D husky github:kei-inc/kei-interactive-harness#v1.6.0`. In a pnpm
 workspace (there is a `pnpm-workspace.yaml`), add `-w` so it installs at the
 root: `pnpm add -D -w ...`. The generated CI detects pnpm and uses it, including
 the project's own pnpm version from the `packageManager` field in
@@ -685,7 +685,7 @@ is the easy way to downgrade a project. `harness sync` refuses to go backwards
 unless you pass `--allow-downgrade`.
 
 ```bash
-npm i -D github:kei-inc/kei-interactive-harness#v1.5.0
+npm i -D github:kei-inc/kei-interactive-harness#v1.6.0
 npx harness sync
 git add -A && git commit -m "update kei-interactive-harness" && git push
 ```
