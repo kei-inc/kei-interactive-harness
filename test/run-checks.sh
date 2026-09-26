@@ -13,6 +13,7 @@
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB="$(cd "$HERE/../lib" && pwd)"
+BIN="$(cd "$HERE/../bin" && pwd)/harness.js"
 PASS=0; FAILN=0
 TMPROOT="$(mktemp -d)"
 trap 'rm -rf "$TMPROOT"' EXIT
@@ -94,6 +95,50 @@ expect_out "lists the dated marker" 'old\.ts:1'
 expect_out "lists the undated marker first" 'undated.*undated\.ts:1'
 expect_no_out "ignores node_modules" 'node_modules'
 expect "plain listing never fails" 0 $S
+
+echo "turn (end-of-turn hook)"
+
+T="node $BIN turn"
+commit_all() { git -C "$REPO" add -A && git -C "$REPO" -c user.email=t@t -c user.name=t commit -q -m c; }
+# feed <json>: run the last-set command with this stdin
+turn_with() { local json="$1"; shift; printf '%s' "$json" | "$@"; }
+
+REPO="$(new_repo turn-clean)"
+printf 'export const x = 1\n' > "$REPO/a.ts"
+expect "clean change: claude hook stays quiet" 0 turn_with '{}' $T --agent claude
+expect "clean change: cursor hook returns {}" 0 turn_with '{"status":"completed","loop_count":0}' $T --agent cursor
+expect_out "cursor quiet output is an empty object" '^\{\}$'
+
+REPO="$(new_repo turn-block)"
+printf 'export const run = (s: string) => eval(s)\n' > "$REPO/a.ts"
+expect "blocked change: claude hook exits 2" 2 turn_with '{"stop_hook_active":false}' $T --agent claude
+expect_out "claude sees the finding" 'eval of a dynamic expression'
+expect_out "claude sees the file" 'a\.ts:1'
+expect "blocked change: cursor hook exits 0" 0 turn_with '{"status":"completed","loop_count":0}' $T --agent cursor
+expect_out "cursor gets a follow-up message" '"followup_message":".*eval of a dynamic expression'
+expect "claude does not loop" 0 turn_with '{"stop_hook_active":true}' $T --agent claude
+expect "cursor does not loop" 0 turn_with '{"status":"completed","loop_count":1}' $T --agent cursor
+expect_out "cursor loop guard returns {}" '^\{\}$'
+expect "cursor ignores aborted turns" 0 turn_with '{"status":"aborted","loop_count":0}' $T --agent cursor
+expect_out "aborted turn returns {}" '^\{\}$'
+expect "plain run exits 1 on a block" 1 $T
+
+REPO="$(new_repo turn-old)"
+printf 'export const run = (s: string) => eval(s)\n' > "$REPO/old.ts"
+commit_all
+printf 'export const x = 1\n' > "$REPO/data.ts"
+expect "old finding in an untouched file does not interrupt" 0 turn_with '{}' $T --agent claude
+
+REPO="$(new_repo turn-substring)"
+printf 'export const run = (s: string) => eval(s)\n' > "$REPO/data.ts"
+commit_all
+printf 'export const x = 1\n' > "$REPO/a.ts"
+expect "a change to a.ts does not claim data.ts" 0 turn_with '{}' $T --agent claude
+
+REPO="$(new_repo turn-disabled)"
+mkdir -p "$REPO/.harness"; printf 'HARNESS_DISABLE="turn"\n' > "$REPO/.harness/config.sh"
+printf 'export const run = (s: string) => eval(s)\n' > "$REPO/a.ts"
+expect "HARNESS_DISABLE=turn switches it off" 0 turn_with '{}' $T --agent claude
 
 echo
 if [ "$FAILN" -eq 0 ]; then echo "all $PASS passed"; exit 0; fi

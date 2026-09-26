@@ -26,12 +26,13 @@ Files land in three tiers:
 | Tier | Where | On sync |
 |---|---|---|
 | Package logic | `node_modules/kei-interactive-harness/` | updated by reinstalling, never copied |
-| Managed | `.cursor/`, `.husky/`, `.github/workflows/` | regenerated; do not edit |
-| Yours | `docs/`, `.harness/`, `.cursor/rules/90-*`, `.husky/*.local` | never touched |
+| Managed | `.cursor/rules`, `.cursor/commands`, `.claude/rules`, `.claude/commands`, `.husky/`, `.github/workflows/` | regenerated; do not edit |
+| Shared | `.cursor/hooks.json`, `.claude/settings.json` | one harness entry (the end-of-turn hook) is kept current; everything else in the file is yours |
+| Yours | `docs/`, `.harness/`, `.cursor/rules/90-*`, `.claude/rules/90-*`, `.husky/*.local` | never touched |
 
 **What is committed and what is not.** The package logic sits in
 `node_modules/` and is never committed. Everything else the harness writes is
-committed on purpose: Cursor needs the rules in every clone, CI cannot run
+committed on purpose: the agents need the rules and hooks in every clone, CI cannot run
 workflows that are not in the repo, and the ratchet only works with its baseline
 in git history. `init` adds the few things that should never be committed
 (env files, `*.harness-new`, nightly report files) to `.gitignore` for you.
@@ -662,17 +663,34 @@ a stopped container or wrong database fails loudly rather than passing silently.
 
 ---
 
-## 6. Checking Cursor picked it up
+## 6. Checking the agents picked it up
 
 After the first `init`, open the project in Cursor and confirm:
 
 - **Settings → Rules** lists the seven `.mdc` files (six without Supabase), and
   the scoped ones show their globs attached.
 - Typing `/repair` in chat offers the command.
+- **Settings → Hooks** shows the `stop` hook from `.cursor/hooks.json`.
+
+In Claude Code, from the project root:
+
+- `/memory` lists `AGENTS.md` and the `.claude/rules/` files.
+- Typing `/repair` offers the command.
+- `/hooks` shows a `Stop` hook running `harness turn`.
+
+To see the end-of-turn check work, ask the agent for a route handler with no
+auth check. It should come back with one that calls `requireUser()` or carries
+`// @public-route` with a reason, and in the agent's log you may see the hook
+hand the first draft back.
 
 If the scoped rules are not attaching to files, the likely cause is the
 `globs:` format in the rule frontmatter. Fix it in the harness repo, release a
 patch, and sync.
+
+**If a project already had `.cursor/hooks.json` or `.claude/settings.json`**,
+sync adds its one entry and keeps everything else. If either file is not valid
+JSON, sync skips it and says so; add the entry by hand, copying its shape from
+a fresh project, or fix the file and sync again.
 
 ---
 
@@ -843,4 +861,7 @@ must be paid or acknowledged.
 | "semgrep could not run" locally, inside an agent's shell | Usually a non-writable `HOME`. Run from a normal terminal, or point `HOME` somewhere writable, and restore it before `git push` or `gh`, which need your real credentials. |
 | A `.local` hook aborts the commit unexpectedly | Husky runs hooks with `sh -e`; its last command decides. End the file with `true`. |
 | A temporary `rls-allow.txt` entry stopped working | Its `until()` date passed. Fix the finding, or extend the date with a reason. |
+| The agent never gets the end-of-turn findings | `npx harness doctor` shows whether each hook is wired. Run `npx harness turn` by hand to see what it would report. In Cursor, check Settings → Hooks for errors. |
+| End-of-turn check interrupts on something you meant | Use the escape comment the message names (`// @public-route`, `// @public-action`, `-- @no-data-api`) with a reason, or `HARNESS_DISABLE="turn"`. |
+| Claude Code ignores AGENTS.md | A `CLAUDE.md` exists without `@AGENTS.md` in it. Add that line. |
 | RLS audit says "not a Supabase project" | Expected on non-Supabase projects. Force with `HARNESS_SUPABASE=on` if detection missed it. |
