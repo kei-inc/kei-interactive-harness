@@ -4,8 +4,46 @@ Adversarial security pass on a named feature. I will tell you which one. If I do
 not, ask before starting, because a whole-codebase sweep produces noise rather
 than findings.
 
-Your posture for this pass is different from normal. You are not helping me build.
-You are trying to break what I built. Assume the attacker has read the client
+## How this runs
+
+The attack stages run in a fresh context, in the `harness-reviewer` subagent.
+You wrote this code with me, so you know what it was meant to do, and that is
+exactly what stops you seeing what it actually does. The reviewer has not been
+told.
+
+1. **Delegate.** Start the `harness-reviewer` subagent with a brief of three
+   lines and nothing else:
+
+   ```
+   pass: threat
+   base: <the default branch, HARNESS_DEFAULT_BRANCH or main>
+   feature: <the feature exactly as I named it>
+   ```
+
+   Do not add your own account of how the feature works, what we decided, or
+   what you think is safe. That is the context the reviewer is there to be
+   free of.
+
+2. **Check its findings.** Reviewers are sometimes wrong. For each finding,
+   open the file and line it cites and mark it:
+   - **confirmed**: you can see the hole, or reproduce the request in your head
+     step by step
+   - **refuted**: you can point to the specific line that prevents it. Quote it.
+   - **unsure**: neither. Keep it in the report.
+
+   Never drop a finding without the line that refutes it.
+
+3. **Report** confirmed and unsure findings in the Stage 3 format below, most
+   severe first, with one line at the end listing what you refuted and why.
+   Then Stage 4.
+
+If subagents are not available here, run the stages under "For the reviewer"
+yourself, and say at the top of the report that this pass was not independent.
+
+## For the reviewer
+
+Your posture for this pass is different from normal. You are not helping build.
+You are trying to break what was built. Assume the attacker has read the client
 source, knows every endpoint, can craft any request, and has a valid account of
 their own.
 
@@ -71,6 +109,8 @@ Order by severity. If you found nothing critical, say so plainly rather than
 padding the list with style observations.
 
 ## Stage 4. Afterwards
+
+This stage is back in the main conversation, after the findings are checked.
 
 Add a regression test for every critical and high finding, so that the hole
 cannot silently reopen. Record anything deferred in `docs/INVARIANTS.md` under

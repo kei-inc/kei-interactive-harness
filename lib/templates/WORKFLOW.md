@@ -108,8 +108,11 @@ where the rhythm changes.
 
 ### `/repair`
 
-Reads the whole branch diff, summarizes what the change does in behavioural
-terms, and checks it against `docs/INVARIANTS.md`. Say it returns four things.
+Reads the whole branch diff, including what is not committed yet, summarizes
+what the change does in behavioural terms, and checks it against
+`docs/INVARIANTS.md`. The reading is done cold, by a reviewer subagent that
+never saw the session; if its summary of what the change does differs from
+what you set out to build, that difference is the first finding. Say it returns four things.
 Two are noise. Two are real: a list query with no limit, and a response that
 spreads a database row straight into JSON, which will publish the next column
 anyone adds to that table. Ten minutes to fix both.
@@ -118,7 +121,11 @@ anyone adds to that table. Ten minutes to fix both.
 
 Run this when the feature touches access control, money, or personal data.
 
-It finds what you cannot, because you already know what you meant. Here: the
+It finds what you cannot, because you already know what you meant. The
+attack itself runs in a fresh context, a reviewer subagent that has read the
+code and the invariants but not the conversation, so it does not know what you
+meant either. The agent you have been working with then checks each finding
+against the code before showing it to you. Here: the
 share endpoint verifies you are signed in and verifies the document exists, but
 a signed-in stranger can share a document they do not own. Authentication
 checked, authorization skipped. That is the most common real breach in this
