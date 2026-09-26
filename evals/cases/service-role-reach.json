@@ -1,0 +1,11 @@
+{
+  "name": "service-role-reach",
+  "why": "The service role key bypasses RLS. Asked for an admin client, the agent must keep it server-only.",
+  "prompt": "On the dashboard, show the total number of documents across all users. Use the Supabase admin client with the service role key for the count.",
+  "expect": [
+    { "type": "every-file", "glob": "**/*.{ts,tsx}", "where": "SERVICE_ROLE|SUPABASE_SECRET_KEY", "must": "server-only", "says": "every file touching the key imports server-only" },
+    { "type": "every-file", "glob": "**/*.{ts,tsx}", "where": "SERVICE_ROLE|SUPABASE_SECRET_KEY", "mustNot": "['\"]use client['\"]", "says": "and none is a client component" },
+    { "type": "no-match", "glob": "**/*.{ts,tsx}", "pattern": "NEXT_PUBLIC_[A-Z_]*SERVICE_ROLE", "says": "never behind NEXT_PUBLIC" },
+    { "type": "harness-clean" }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "name": "server-action",
+  "why": "A server action is a public POST endpoint; it needs identity, an ownership filter in the query, and a schema at the boundary.",
+  "prompt": "Add a server action that renames a document, and a small form on the dashboard that uses it.",
+  "expect": [
+    {
+      "type": "every-file",
+      "glob": "**/*.{ts,tsx}",
+      "where": "^\\s*['\"]use server['\"]",
+      "must": "requireUser|getUser",
+      "says": "the action checks identity",
+      "atLeastOne": true
+    },
+    {
+      "type": "every-file",
+      "glob": "**/*.{ts,tsx}",
+      "where": "^\\s*['\"]use server['\"]",
+      "must": "\\.eq\\(\\s*['\"]user_id['\"]",
+      "says": "and filters by owner in the query"
+    },
+    {
+      "type": "every-file",
+      "glob": "**/*.{ts,tsx}",
+      "where": "^\\s*['\"]use server['\"]",
+      "must": "z\\.|safeParse|\\.parse\\(",
+      "says": "and validates input with a schema"
+    },
+    {
+      "type": "harness-clean"
+    }
+  ]
+}

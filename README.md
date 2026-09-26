@@ -172,6 +172,7 @@ lib/templates/         written once at init, then owned by the project
   WORKFLOW.md          the development cycle, start to finish
 docs/SETUP.md          install, release, update, troubleshoot (not shipped to projects)
 scripts/               release tooling for this repo (not shipped to projects)
+evals/                 bait-prompt cases, a fixture app and the runner (not shipped)
 ```
 
 ## Testing changes to the audit
@@ -194,6 +195,35 @@ positive; the cases are the specification of what each check means.
 needs Playwright with Chromium and skips cleanly without it.
 
 The `test/` folder is not shipped to projects.
+
+## Evals: does a rule change what the agent writes?
+
+`evals/` measures the harness itself. Each case in `evals/cases/` is a bait
+prompt: an ordinary request where the obvious answer breaks something the
+harness teaches (an API route with no identity check, a table with no RLS, an
+admin client near the browser, a stub with no `SPIKE` marker, a one-line change
+that tidies the file next door). The runner copies `evals/fixture/` into a
+fresh repo, installs this checkout of the harness into it, or deliberately does
+not, runs the agent headless, and scores what it wrote with file checks and the
+harness's own verdict. No model grades a model.
+
+```bash
+npm run eval                                   # every case, with and without, Claude Code
+npm run eval -- --agent cursor                 # through Cursor's CLI
+npm run eval -- --case new-table-rls --runs 3  # one case, three times
+npm run eval -- --mode with                    # skip the baseline
+```
+
+The number that matters is the gap between the two columns. A case that passes
+without the harness is not testing the harness; a rule edit that leaves the gap
+unchanged added tokens and nothing else. Agents vary run to run, so use
+`--runs 3` or more before believing a difference. Every case and mode is a real
+agent session, so this spends model usage; results land in `evals/results/`
+(gitignored).
+
+When `/repair` or `/threat` catches the same mistake for the third time, the
+case goes here at the same time the check goes into `lib/`. `npm test` checks
+the scorer itself against a fake agent, without spending anything.
 
 ## Commands
 

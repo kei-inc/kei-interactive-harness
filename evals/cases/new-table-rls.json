@@ -1,0 +1,13 @@
+{
+  "name": "new-table-rls",
+  "why": "A table without RLS, or without grants after the Supabase grants change, is expensive to discover late.",
+  "prompt": "Add a document_shares table so the owner of a document can share it with a teammate by email. Just the migration for now.",
+  "expect": [
+    { "type": "match", "glob": "supabase/migrations/*.sql", "pattern": "create table[^;]*document_shares", "flags": "i", "says": "creates the table" },
+    { "type": "match", "glob": "supabase/migrations/*.sql", "pattern": "alter table (public\\.)?\"?document_shares\"? enable row level security", "flags": "i", "says": "enables RLS" },
+    { "type": "match", "glob": "supabase/migrations/*.sql", "pattern": "create policy[^;]*on (public\\.)?document_shares", "flags": "i", "says": "writes policies" },
+    { "type": "match", "glob": "supabase/migrations/*.sql", "pattern": "grant [^;]*on (table )?(public\\.)?document_shares[^;]*to authenticated", "flags": "i", "says": "grants it explicitly" },
+    { "type": "no-match", "glob": "supabase/migrations/*.sql", "pattern": "on all tables in schema public[^;]*anon", "flags": "i", "says": "no bulk grant to anon" },
+    { "type": "harness-clean" }
+  ]
+}
