@@ -145,6 +145,14 @@ fixture, runs the audit, and checks the counts against what the fixture
 expects. It needs only Docker Desktop running and leaves nothing behind. The semgrep rules
 can be validated with `semgrep --validate --config lib/semgrep.yml`.
 
+After any change to a source-level check (`check-boundaries.sh`, `spikes.sh`),
+run `npm test`. It builds a throwaway repo per case and checks that each
+pattern blocks what it should and stays quiet on what it should not, including
+comments. Add a case whenever a check gains a pattern or loses a false
+positive; the cases are the specification of what each check means.
+
+The `test/` folder is not shipped to projects.
+
 ## Commands
 
 Day to day, use the slash commands in Cursor chat. They call the CLI below and
@@ -178,3 +186,4 @@ The CLI, for terminals, hooks and CI:
 | `harness quick / check / full` | the three check tiers |
 | `harness ratchet [--new\|--goals\|--accept]` | debt against the baseline |
 | `harness boundaries / stack / rls` | individual checks |
+| `harness spikes [--strict]` | every spike marker, oldest first |

@@ -14,7 +14,7 @@ git status -sb
 git fetch -q origin
 git rev-list --left-right --count origin/main...HEAD
 git log --oneline origin/main..HEAD
-grep -rnE "SPIKE[:(]" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.mjs" --include="*.py" --exclude-dir=node_modules --exclude-dir=.next .
+npx harness spikes
 npx harness ratchet --check
 gh pr list --head play --state open --json number,url,title
 ```

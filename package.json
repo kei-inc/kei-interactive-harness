@@ -7,12 +7,12 @@
   },
   "scripts": {
     "version": "node scripts/sync-version.js",
-    "check:version": "node scripts/sync-version.js --check"
+    "check:version": "node scripts/sync-version.js --check",
+    "test": "bash test/run-checks.sh"
   },
   "files": [
     "bin",
     "lib",
-    "test",
     "README.md"
   ],
   "engines": {
