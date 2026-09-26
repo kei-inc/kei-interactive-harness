@@ -243,7 +243,8 @@ of what your codebases have taught you.
 
 | Moment | Cost | What runs |
 |---|---|---|
-| While typing | free | Cursor rules shaping the output |
+| While typing | free | agent rules shaping the output |
+| End of each agent turn | under a second | boundaries and stack on changed files; the agent fixes what they block before you look |
 | Every commit | ~4s | secrets, boundaries, stack, ratchet (report only), staged lint |
 | Every push | ~40s | types, lint, unit tests |
 | Pull request | minutes, elsewhere | full suite, semgrep, RLS audit, build, e2e |
