@@ -422,6 +422,7 @@ function ensureGitignore() {
     'knip.json',
     'ratchet-trend.txt',
     '.claude/settings.local.json',
+    '.harness/shots/',
   ];
   // Treat "node_modules" and "/node_modules" as covering node_modules/.
   const has = (w) => lines.includes(w) || lines.includes(w.replace(/\/$/, '')) || lines.includes('/' + w.replace(/\/$/, ''));
@@ -803,8 +804,9 @@ case "\$cmd" in
   semgrep)    exec bash "\$HARNESS_LIB/scripts/semgrep.sh" "\$@" ;;
   spikes)     exec bash "\$HARNESS_LIB/scripts/spikes.sh" "\$@" ;;
   turn)       exec node "\$HARNESS_LIB/scripts/turn.js" "\$@" ;;
+  shot)       exec node "\$HARNESS_LIB/scripts/shot.js" "\$@" ;;
   ratchet)    exec bash "\$HARNESS_LIB/scripts/ratchet.sh" "\$@" ;;
-  *) echo "usage: harness/run.sh <quick|check|full|boundaries|stack|rls|grants|migrations|semgrep|spikes|turn|ratchet>"; exit 2 ;;
+  *) echo "usage: harness/run.sh <quick|check|full|boundaries|stack|rls|grants|migrations|semgrep|spikes|turn|shot|ratchet>"; exit 2 ;;
 esac
 `, true);
   const pairs = [
@@ -884,6 +886,12 @@ switch (cmd) {
   case 'migrations': run('check-migrations.sh', rest); break;
   case 'semgrep': run('semgrep.sh', rest); break;
   case 'spikes': run('spikes.sh', rest); break;
+  case 'shot': {
+    const r = spawnSync('node', [path.join(LIB, 'scripts', 'shot.js'), ...rest], {
+      stdio: 'inherit', env: { ...process.env, HARNESS_PROJECT_ROOT: CWD, HARNESS_LIB: LIB },
+    });
+    process.exit(r.status === null ? 1 : r.status);
+  }
   case 'turn': {
     const r = spawnSync('node', [path.join(LIB, 'scripts', 'turn.js'), ...rest], {
       stdio: 'inherit', env: { ...process.env, HARNESS_PROJECT_ROOT: CWD, HARNESS_LIB: LIB },
@@ -918,6 +926,8 @@ switch (cmd) {
     boundaries      the non-negotiables
     spikes          every SPIKE marker, oldest first (--strict fails if any)
     turn            what the agent's end-of-turn hook runs: blocks in changed files
+    shot <url>      render at a design's frame width; --reference to compare,
+                    --styles to measure (needs the project's Playwright)
     lib             print the package lib path (for CI)
     stack           Next.js, Supabase, Cloudflare specifics
     rls             audit the live database perimeter

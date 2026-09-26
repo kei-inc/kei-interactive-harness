@@ -694,6 +694,43 @@ a fresh project, or fix the file and sync again.
 
 ---
 
+## 6a. Matching a design: Figma and screenshots
+
+`/match` builds a page or component to a Figma frame or a screenshot, checking
+the result by computed style and by pixel comparison. It needs two things, both
+once per machine or project.
+
+**Playwright in the project**, for `harness shot`. The harness does not bundle
+it; the agent asks before adding it.
+
+```bash
+npm i -D playwright
+npx playwright install chromium
+```
+
+**The Figma MCP server**, for reading exact values out of a frame. Without it
+`/match` still works from a screenshot, but estimates instead of reading.
+
+In Claude Code:
+
+```bash
+claude mcp add --transport http figma https://mcp.figma.com/mcp
+```
+
+In Cursor, type `/add-plugin figma` in chat. Either way you sign in to Figma
+once. Then share links to frames or layers (right-click, Copy link to
+selection); a link to the whole file gives the server nothing specific to read.
+
+`harness shot` writes to `.harness/shots/`, which `init` gitignores. It can be
+run by hand, and is the fastest way to see what the agent is comparing:
+
+```bash
+npx harness shot http://localhost:3000/pricing --width 1440 \
+  --reference .harness/shots/pricing-ref.png --styles ".plan-card, h1"
+```
+
+---
+
 ## 7. Updating a project to a newer harness version
 
 The easy way: on `play`, type `/sync` in Cursor chat. It looks up the latest
@@ -863,5 +900,8 @@ must be paid or acknowledged.
 | A temporary `rls-allow.txt` entry stopped working | Its `until()` date passed. Fix the finding, or extend the date with a reason. |
 | The agent never gets the end-of-turn findings | `npx harness doctor` shows whether each hook is wired. Run `npx harness turn` by hand to see what it would report. In Cursor, check Settings → Hooks for errors. |
 | End-of-turn check interrupts on something you meant | Use the escape comment the message names (`// @public-route`, `// @public-action`, `-- @no-data-api`) with a reason, or `HARNESS_DISABLE="turn"`. |
+| `/match` says Playwright is missing | `npm i -D playwright && npx playwright install chromium` (6a). |
+| `harness shot` reports `fontsNotLoaded` | A web font failed to load on the dev server. Fix that first; every text measurement is off until it loads. |
+| Figma tools not available to the agent | Connect the Figma MCP server (6a), then restart the agent session. |
 | Claude Code ignores AGENTS.md | A `CLAUDE.md` exists without `@AGENTS.md` in it. Add that line. |
 | RLS audit says "not a Supabase project" | Expected on non-Supabase projects. Force with `HARNESS_SUPABASE=on` if detection missed it. |
