@@ -48,6 +48,13 @@ when invoked, never on the model's own initiative). `HARNESS_AGENTS="cursor"`
 in `.harness/config.sh` narrows it to one, and sync removes what it wrote for
 the other.
 
+`/repair` and `/threat` hand their reading to `harness-reviewer`, a read-only
+subagent in `.claude/agents/` (Cursor reads that folder too). It gets the pass
+name and the base branch, never the conversation, because the agent that helped
+write the code shares your blind spot: it knows what the code was meant to do.
+The main agent then checks each finding against the code, and can only drop one
+by quoting the line that refutes it.
+
 Do not add a `CLAUDE.md` that restates the contract. Claude Code reads
 `AGENTS.md` only when there is no `CLAUDE.md`; if a project needs one, give it a
 line that says just `@AGENTS.md`. `harness doctor` flags one that does not.
@@ -152,6 +159,7 @@ work of one.
 ```
 bin/harness.js         the CLI
 lib/rules/*.mdc        agent rules, materialised for Cursor (.mdc) and Claude Code (.md)
+lib/agents/*.md        subagents: the fresh-context reviewer for /repair and /threat
 lib/commands/*.md      the rituals (repair, threat, scale, backfill, preflight) and
                        the branch loop (status, play, ship, land) and upkeep
                        (sync, doctor, debt) and coverage (authtest, offline,

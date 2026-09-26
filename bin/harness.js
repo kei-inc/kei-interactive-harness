@@ -196,7 +196,8 @@ function conditionFor(to) {
   const conds = [];
   if (/15-supabase\.mdc?$/.test(to)) conds.push(usesSupabase);
   if (to.startsWith('.cursor/')) conds.push(forAgent('cursor'));
-  if (to.startsWith('.claude/')) conds.push(forAgent('claude'));
+  if (to.startsWith('.claude/agents/')) conds.push(() => agents().length > 0);
+  else if (to.startsWith('.claude/')) conds.push(forAgent('claude'));
   return conds.length ? () => conds.every((f) => f()) : null;
 }
 
@@ -222,6 +223,11 @@ const MANAGED = [
   ...fs.readdirSync(path.join(LIB, 'commands')).map((f) => ({
     from: `commands/${f}`, to: `.claude/commands/${f}`, comment: 'claude',
     transform: toClaudeCommand,
+  })),
+  // Subagents for the rituals that need a fresh context. Cursor reads
+  // .claude/agents/ as well as its own folder, so one copy serves both.
+  ...fs.readdirSync(path.join(LIB, 'agents')).map((f) => ({
+    from: `agents/${f}`, to: `.claude/agents/${f}`, comment: 'claude',
   })),
   ...fs.readdirSync(path.join(LIB, 'generated/husky')).map((f) => ({
     from: `generated/husky/${f}`, to: `.husky/${f}`, comment: 'hash', exec: true,
