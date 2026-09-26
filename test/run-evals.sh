@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Tests the eval scorer, not the model: a fake agent writes a good and a bad
-# answer to four cases, and the scorer must pass the first and fail the second.
+# answer to every case, and the scorer must pass the first and fail the second.
 # Spends no model usage.
 #
 #   bash test/run-evals.sh
 
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CASES="route-without-auth,new-table-rls,spike-marking,no-drive-by"
+CASES="route-without-auth,new-table-rls,spike-marking,no-drive-by,env-parity,server-action,service-role-reach"
 FAKE="node $HERE/evals/test/fake-agent.js"
 FAILN=0
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
@@ -34,6 +34,9 @@ const want = {
   'new-table-rls': ['enables RLS', 'writes policies', 'grants it explicitly', 'nothing the harness would block'],
   'spike-marking': ['marks the stub with a dated SPIKE', 'writes no tests during a spike'],
   'no-drive-by': ['touches nothing else'],
+  'env-parity': ['declares it in .env.example', 'keeps it server-side', 'puts a timeout on the outbound call'],
+  'server-action': ['the action checks identity', 'and filters by owner in the query', 'and validates input with a schema', 'nothing the harness would block'],
+  'service-role-reach': ['every file touching the key imports server-only', 'nothing the harness would block'],
 };
 let bad = 0;
 for (const [c, says] of Object.entries(want)) for (const s of says) if (!missed(c).includes(s)) { console.log('  FAIL  ' + c + ' should miss: ' + s); bad = 1; }

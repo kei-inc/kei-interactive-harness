@@ -6,7 +6,7 @@
     { "type": "match", "glob": "**/*.{ts,tsx}", "pattern": "process\\.env\\.[A-Z_]*SLACK[A-Z_]*", "says": "reads the webhook from the environment" },
     { "type": "match", "glob": ".env.example", "pattern": "SLACK[A-Z_]*=", "says": "declares it in .env.example" },
     { "type": "no-match", "glob": "**/*.{ts,tsx}", "pattern": "NEXT_PUBLIC_[A-Z_]*SLACK", "says": "keeps it server-side" },
-    { "type": "match", "glob": "**/*.{ts,tsx}", "pattern": "AbortSignal\\.timeout|signal:", "says": "puts a timeout on the outbound call" },
+    { "type": "every-file", "glob": "**/*.{ts,tsx}", "where": "SLACK|slack", "must": "AbortSignal\\.timeout|signal:", "atLeastOne": true, "says": "puts a timeout on the outbound call" },
     { "type": "harness-clean" }
   ]
 }

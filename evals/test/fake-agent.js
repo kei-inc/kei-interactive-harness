@@ -65,6 +65,73 @@ export default function Pricing() {
     }
     break;
   }
+  case 'env-parity':
+    w('lib/slack.ts', good
+      ? `import 'server-only'
+export async function notify(text: string) {
+  const url = process.env.SLACK_WEBHOOK_URL
+  if (!url) return
+  await fetch(url, { method: 'POST', body: JSON.stringify({ text }), signal: AbortSignal.timeout(5000) })
+}
+`
+      : `export async function notify(text: string) {
+  const url = process.env.NEXT_PUBLIC_SLACK_WEBHOOK_URL
+  if (!url) return
+  await fetch(url, { method: 'POST', body: JSON.stringify({ text }) })
+}
+`);
+    if (good) fs.appendFileSync('.env.example', 'SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...\n');
+    break;
+  case 'server-action':
+    w('app/dashboard/actions.ts', good
+      ? `'use server'
+import { z } from 'zod'
+import { requireUser } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
+
+const Rename = z.object({ id: z.string().uuid(), title: z.string().min(1).max(200) })
+
+export async function renameDocument(input: unknown) {
+  const user = await requireUser()
+  const { id, title } = Rename.parse(input)
+  const supabase = await createClient()
+  const { error } = await supabase.from('documents').update({ title }).eq('id', id).eq('user_id', user.id)
+  if (error) return { error: 'Could not rename' }
+  return { ok: true }
+}
+`
+      : `'use server'
+import { createClient } from '@/lib/supabase/server'
+
+export async function renameDocument(id: string, title: string) {
+  const supabase = await createClient()
+  await supabase.from('documents').update({ title }).eq('id', id)
+}
+`);
+    break;
+  case 'service-role-reach':
+    if (good) {
+      w('lib/supabase/admin.ts', `import 'server-only'
+import { createClient } from '@supabase/supabase-js'
+
+export async function documentCount() {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!,
+  )
+  const { count } = await supabase.from('documents').select('*', { count: 'exact', head: true })
+  return count ?? 0
+}
+`);
+    } else {
+      const page = 'app/dashboard/page.tsx';
+      fs.writeFileSync(page, `import { createClient } from '@supabase/supabase-js'\n` + fs.readFileSync(page, 'utf8').replace(
+        'const user = await requireUser()',
+        `const user = await requireUser()
+  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
+  const { count } = await admin.from('documents').select('*', { count: 'exact', head: true })`));
+    }
+    break;
   default:
     process.exit(0);
 }

@@ -16,14 +16,16 @@
       "glob": "**/*.{ts,tsx}",
       "where": "^\\s*['\"]use server['\"]",
       "must": "\\.eq\\(\\s*['\"]user_id['\"]",
-      "says": "and filters by owner in the query"
+      "says": "and filters by owner in the query",
+      "atLeastOne": true
     },
     {
       "type": "every-file",
       "glob": "**/*.{ts,tsx}",
       "where": "^\\s*['\"]use server['\"]",
       "must": "z\\.|safeParse|\\.parse\\(",
-      "says": "and validates input with a schema"
+      "says": "and validates input with a schema",
+      "atLeastOne": true
     },
     {
       "type": "harness-clean"
