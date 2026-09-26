@@ -8,7 +8,8 @@
   "scripts": {
     "version": "node scripts/sync-version.js",
     "check:version": "node scripts/sync-version.js --check",
-    "test": "bash test/run-checks.sh && bash test/run-sync.sh"
+    "test": "bash test/run-checks.sh && bash test/run-sync.sh",
+    "test:shot": "bash test/run-shot.sh"
   },
   "files": [
     "bin",

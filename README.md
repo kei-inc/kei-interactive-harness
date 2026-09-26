@@ -190,6 +190,9 @@ pattern blocks what it should and stays quiet on what it should not, including
 comments. Add a case whenever a check gains a pattern or loses a false
 positive; the cases are the specification of what each check means.
 
+`npm run test:shot` does the same for `harness shot` against a local page. It
+needs Playwright with Chromium and skips cleanly without it.
+
 The `test/` folder is not shipped to projects.
 
 ## Commands
@@ -210,6 +213,7 @@ handle the judgement around it. The hooks and CI run the checks on their own.
 | `/offline` | tests proving offline work arrives exactly once |
 | `/perf` | Speed Insights, a bundle budget, slow queries |
 | `/monitor` | Sentry error monitoring, verified on a preview |
+| `/match` | build to a Figma frame or screenshot, measured, not eyeballed |
 | `/repair` `/threat` `/scale` `/backfill` `/preflight` | the rituals |
 
 The CLI, for terminals, hooks and CI:
@@ -227,3 +231,4 @@ The CLI, for terminals, hooks and CI:
 | `harness boundaries / stack / rls` | individual checks |
 | `harness spikes [--strict]` | every spike marker, oldest first |
 | `harness turn` | what the end-of-turn hook runs, on changed files |
+| `harness shot <url>` | render at a frame's width; compare with a reference; measure computed styles |

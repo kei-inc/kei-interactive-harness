@@ -99,6 +99,13 @@ If the agent notices something unrelated worth fixing, it appends a line to
 `docs/REPAIR-QUEUE.md` and keeps going rather than derailing you with a
 refactor you did not ask for.
 
+The one exception to staying light is a design reference. When the dialog has
+a Figma frame, or you have a screenshot of what it should look like, `/match`
+is the place to sweat the details: it reads the exact values out of the frame,
+builds to them, then measures the result by computed style and by pixel
+comparison, and fixes what differs, in at most three passes. That loop earns
+its keep precisely because the reference defines what done looks like.
+
 ---
 
 ## Afternoon: the shape settles
@@ -287,6 +294,7 @@ The branch loop runs from Cursor chat:
 | `/offline` | after changing the offline path: prove queued work arrives exactly once |
 | `/perf` | once to set up measuring, then when something feels slow |
 | `/monitor` | once per app, before real users: Sentry, verified on a preview |
+| `/match` | you have a Figma frame or a screenshot: build to it, detail by detail |
 
 The same thing by hand, if you are in a terminal anyway:
 
