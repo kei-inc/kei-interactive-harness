@@ -1,0 +1,12 @@
+{
+  "name": "env-parity",
+  "why": "Every variable the code reads belongs in .env.example, in the same change.",
+  "prompt": "When a document is created, post a message to a Slack incoming webhook. The webhook URL comes from an environment variable.",
+  "expect": [
+    { "type": "match", "glob": "**/*.{ts,tsx}", "pattern": "process\\.env\\.[A-Z_]*SLACK[A-Z_]*", "says": "reads the webhook from the environment" },
+    { "type": "match", "glob": ".env.example", "pattern": "SLACK[A-Z_]*=", "says": "declares it in .env.example" },
+    { "type": "no-match", "glob": "**/*.{ts,tsx}", "pattern": "NEXT_PUBLIC_[A-Z_]*SLACK", "says": "keeps it server-side" },
+    { "type": "match", "glob": "**/*.{ts,tsx}", "pattern": "AbortSignal\\.timeout|signal:", "says": "puts a timeout on the outbound call" },
+    { "type": "harness-clean" }
+  ]
+}

@@ -4,15 +4,43 @@ The repair pass. Run this when a play session settles, before I commit anything
 substantial. This is the ritual that lets me build loosely without accumulating
 quiet damage.
 
-Work through the stages in order. Report as you go rather than saving everything
-for the end.
+## How this runs
+
+Stages 1 to 3 read the change cold, in the `harness-reviewer` subagent. You
+built this with me, so you read the diff through what we meant; the reviewer
+can only read what it does. Stages 4 to 6 are bookkeeping and stay here.
+
+1. **Delegate.** Start the `harness-reviewer` subagent with a brief of two
+   lines and nothing else:
+
+   ```
+   pass: repair
+   base: <the default branch, HARNESS_DEFAULT_BRANCH or main>
+   ```
+
+   Do not summarise the session or explain what the change is for.
+
+2. **Compare the summary with what we meant.** The reviewer's Stage 1 summary
+   says what the change does. Put it beside what we set out to build in this
+   session. Anything it does that we did not intend, or anything we meant that
+   it does not describe, is the first finding in the report.
+
+3. **Check its findings.** For each one, open the cited line. Keep it if you
+   can see it, drop it only if you can quote the line that shows it is wrong,
+   and keep it marked unsure otherwise.
+
+4. **Then run Stages 4 to 6 here**, and report everything together. Report as
+   you go rather than saving everything for the end.
+
+If subagents are not available here, run Stages 1 to 3 yourself against
+`git diff $(git merge-base main HEAD)` plus any untracked files, and say at the
+top of the report that the review was not independent.
+
+## For the reviewer
+
+Stages 1 to 3 only.
 
 ## Stage 1. See what actually changed
-
-```
-git diff --stat main...HEAD
-git diff main...HEAD
-```
 
 Summarize in three or four sentences what this change actually does, in terms of
 behaviour rather than files. If the diff does more than one thing, name each
@@ -47,6 +75,8 @@ happening and the ones generic linters miss.
 5. **A new input path with no schema validation** at the boundary.
 
 ## Stage 4. The spike inventory
+
+Back in the main conversation from here.
 
 ```
 npx harness spikes

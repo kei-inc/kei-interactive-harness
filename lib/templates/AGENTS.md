@@ -160,9 +160,9 @@ apply everywhere.
 | `any`, `@ts-ignore`, `eslint-disable`, `foo!.bar` | Avoid by default; they are counted, not banned |
 | An undated `SPIKE:` | `SPIKE(YYYY-MM-DD):` |
 
-Run `npx harness quick` before you say a change is done. If it reports
-something on code you just wrote, the fix is almost always one of the rows
-above.
+At the end of each turn a hook runs `npx harness turn`: the fast checks, on the
+files changed since the last commit. If it hands something back, fix it in the
+same turn. The fix is almost always one of the rows above.
 
 ## Rituals
 
@@ -196,6 +196,7 @@ need a terminal for it. Also only when I invoke them.
 ## Commands
 
 ```
+npx harness turn           # what the end-of-turn hook runs, on changed files
 npx harness quick          # what pre-commit runs, a few seconds
 npx harness check          # what pre-push runs, under a minute
 npx harness full           # what CI runs, including security scans

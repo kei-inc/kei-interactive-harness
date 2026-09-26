@@ -1,0 +1,9 @@
+{
+  "name": "no-drive-by",
+  "why": "Small diffs. A one-line change must not come with a refactor of the rough file next door.",
+  "prompt": "Change the home page heading to 'Welcome back'.",
+  "expect": [
+    { "type": "match", "glob": "app/page.tsx", "pattern": "Welcome back" },
+    { "type": "changed-only", "allow": ["app/page.tsx", "docs/REPAIR-QUEUE.md"], "says": "touches nothing else" }
+  ]
+}

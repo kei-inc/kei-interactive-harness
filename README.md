@@ -19,21 +19,59 @@ you want the usage flow rather than the architecture.
 
 ## The three tiers
 
-The design problem is that Cursor, husky, and GitHub Actions each read from one
-fixed path and will not look anywhere else, so some files genuinely must exist
+The design problem is that Cursor, Claude Code, husky, and GitHub Actions each
+read from one fixed path and will not look anywhere else, so some files genuinely must exist
 inside every project. The logic does not. Splitting on that line is what makes a
 single source of truth possible.
 
 | Tier | Where | Who owns it | On sync |
 |---|---|---|---|
 | **Package** | `node_modules/kei-interactive-harness/lib/` | this repo | updated by npm, never copied |
-| **Managed** | `.cursor/`, `.husky/`, `.github/workflows/` | this repo | regenerated, carries a do-not-edit header |
-| **Yours** | `docs/`, `.harness/`, `.cursor/rules/90-*` | the project | never touched |
+| **Managed** | `.cursor/rules`, `.cursor/commands`, `.claude/rules`, `.claude/commands`, `.husky/`, `.github/workflows/` | this repo | regenerated, carries a do-not-edit header |
+| **Shared** | `.cursor/hooks.json`, `.claude/settings.json` | both | the harness owns one entry, the end-of-turn hook; the rest is the project's |
+| **Yours** | `docs/`, `.harness/`, `.cursor/rules/90-*`, `.claude/rules/90-*` | the project | never touched |
 
 All the check logic, the SQL, and the semgrep rules stay in the package and run
 from there. Only the files that have nowhere else to live get written into the
 project, and those are regenerated rather than merged, which removes the whole
-question of drift.
+question of drift. The two agent settings files are the exception: they hold
+the project's own permissions and hooks too, so sync adds, updates or removes
+exactly its own entry, recognised by its command, and leaves the rest alone.
+
+## Two agents, one contract
+
+`AGENTS.md` is the contract, and both Cursor and Claude Code read it. The rules
+and rituals are written once in `lib/` and materialised for each agent in its
+own format: `.mdc` rules with `globs` for Cursor, `.md` rules with `paths` for
+Claude Code, and the same slash commands in both (in Claude Code they only run
+when invoked, never on the model's own initiative). `HARNESS_AGENTS="cursor"`
+in `.harness/config.sh` narrows it to one, and sync removes what it wrote for
+the other.
+
+`/repair` and `/threat` hand their reading to `harness-reviewer`, a read-only
+subagent in `.claude/agents/` (Cursor reads that folder too). It gets the pass
+name and the base branch, never the conversation, because the agent that helped
+write the code shares your blind spot: it knows what the code was meant to do.
+The main agent then checks each finding against the code, and can only drop one
+by quoting the line that refutes it.
+
+Do not add a `CLAUDE.md` that restates the contract. Claude Code reads
+`AGENTS.md` only when there is no `CLAUDE.md`; if a project needs one, give it a
+line that says just `@AGENTS.md`. `harness doctor` flags one that does not.
+
+## The end-of-turn check
+
+When the agent finishes a turn, a hook runs `harness turn`: the boundary and
+stack checks, in under a second, reporting only what would block a commit in a
+file changed since the last commit. If it finds something, it hands it back to
+the agent (Claude Code: the stop is blocked with the findings; Cursor: a
+follow-up message), and the agent fixes it in the same turn, before you look.
+
+It is built for small interactive turns rather than long autonomous loops. No
+ratchet, types or tests, which stay at commit, push and the pull request. Old
+findings in untouched files never interrupt. One follow-up per turn at most:
+if the fix trips a check again, the commit hook still has it.
+`HARNESS_DISABLE="turn"` switches it off.
 
 ## Using it
 
@@ -103,8 +141,8 @@ HARNESS_EXTRA_METRICS='legacy-api|from-old-api
 inline-styles|style=\{\{'
 ```
 
-**Add.** Anything in `.cursor/rules/90-*.mdc` is yours, never overwritten, and
-loaded by Cursor alongside the managed rules. Same for extra commands. Each
+**Add.** Anything in `.cursor/rules/90-*.mdc` or `.claude/rules/90-*.md` is
+yours, never overwritten, and loaded alongside the managed rules. Same for extra commands. Each
 managed git hook sources a `.local` sibling if one exists (`.husky/pre-commit.local`,
 `.husky/commit-msg.local`), so commitlint or a custom script lives there and
 survives every sync. Extra CI goes in its own workflow file. This covers most
@@ -120,7 +158,8 @@ work of one.
 
 ```
 bin/harness.js         the CLI
-lib/rules/*.mdc        Cursor rules, materialised into projects
+lib/rules/*.mdc        agent rules, materialised for Cursor (.mdc) and Claude Code (.md)
+lib/agents/*.md        subagents: the fresh-context reviewer for /repair and /threat
 lib/commands/*.md      the rituals (repair, threat, scale, backfill, preflight) and
                        the branch loop (status, play, ship, land) and upkeep
                        (sync, doctor, debt) and coverage (authtest, offline,
@@ -133,6 +172,7 @@ lib/templates/         written once at init, then owned by the project
   WORKFLOW.md          the development cycle, start to finish
 docs/SETUP.md          install, release, update, troubleshoot (not shipped to projects)
 scripts/               release tooling for this repo (not shipped to projects)
+evals/                 bait-prompt cases, a fixture app and the runner (not shipped)
 ```
 
 ## Testing changes to the audit
@@ -151,11 +191,43 @@ pattern blocks what it should and stays quiet on what it should not, including
 comments. Add a case whenever a check gains a pattern or loses a false
 positive; the cases are the specification of what each check means.
 
+`npm run test:shot` does the same for `harness shot` against a local page. It
+needs Playwright with Chromium and skips cleanly without it.
+
 The `test/` folder is not shipped to projects.
+
+## Evals: does a rule change what the agent writes?
+
+`evals/` measures the harness itself. Each case in `evals/cases/` is a bait
+prompt: an ordinary request where the obvious answer breaks something the
+harness teaches (an API route with no identity check, a table with no RLS, an
+admin client near the browser, a stub with no `SPIKE` marker, a one-line change
+that tidies the file next door). The runner copies `evals/fixture/` into a
+fresh repo, installs this checkout of the harness into it, or deliberately does
+not, runs the agent headless, and scores what it wrote with file checks and the
+harness's own verdict. No model grades a model.
+
+```bash
+npm run eval                                   # every case, with and without, Claude Code
+npm run eval -- --agent cursor                 # through Cursor's CLI
+npm run eval -- --case new-table-rls --runs 3  # one case, three times
+npm run eval -- --mode with                    # skip the baseline
+```
+
+The number that matters is the gap between the two columns. A case that passes
+without the harness is not testing the harness; a rule edit that leaves the gap
+unchanged added tokens and nothing else. Agents vary run to run, so use
+`--runs 3` or more before believing a difference. Every case and mode is a real
+agent session, so this spends model usage; results land in `evals/results/`
+(gitignored).
+
+When `/repair` or `/threat` catches the same mistake for the third time, the
+case goes here at the same time the check goes into `lib/`. `npm test` checks
+the scorer itself against a fake agent, without spending anything.
 
 ## Commands
 
-Day to day, use the slash commands in Cursor chat. They call the CLI below and
+Day to day, use the slash commands in Cursor or Claude Code. They call the CLI below and
 handle the judgement around it. The hooks and CI run the checks on their own.
 
 | Slash command | |
@@ -171,6 +243,7 @@ handle the judgement around it. The hooks and CI run the checks on their own.
 | `/offline` | tests proving offline work arrives exactly once |
 | `/perf` | Speed Insights, a bundle budget, slow queries |
 | `/monitor` | Sentry error monitoring, verified on a preview |
+| `/match` | build to a Figma frame or screenshot, measured, not eyeballed |
 | `/repair` `/threat` `/scale` `/backfill` `/preflight` | the rituals |
 
 The CLI, for terminals, hooks and CI:
@@ -187,3 +260,5 @@ The CLI, for terminals, hooks and CI:
 | `harness ratchet [--new\|--goals\|--accept]` | debt against the baseline |
 | `harness boundaries / stack / rls` | individual checks |
 | `harness spikes [--strict]` | every spike marker, oldest first |
+| `harness turn` | what the end-of-turn hook runs, on changed files |
+| `harness shot <url>` | render at a frame's width; compare with a reference; measure computed styles |

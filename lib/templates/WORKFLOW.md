@@ -99,6 +99,13 @@ If the agent notices something unrelated worth fixing, it appends a line to
 `docs/REPAIR-QUEUE.md` and keeps going rather than derailing you with a
 refactor you did not ask for.
 
+The one exception to staying light is a design reference. When the dialog has
+a Figma frame, or you have a screenshot of what it should look like, `/match`
+is the place to sweat the details: it reads the exact values out of the frame,
+builds to them, then measures the result by computed style and by pixel
+comparison, and fixes what differs, in at most three passes. That loop earns
+its keep precisely because the reference defines what done looks like.
+
 ---
 
 ## Afternoon: the shape settles
@@ -108,8 +115,11 @@ where the rhythm changes.
 
 ### `/repair`
 
-Reads the whole branch diff, summarizes what the change does in behavioural
-terms, and checks it against `docs/INVARIANTS.md`. Say it returns four things.
+Reads the whole branch diff, including what is not committed yet, summarizes
+what the change does in behavioural terms, and checks it against
+`docs/INVARIANTS.md`. The reading is done cold, by a reviewer subagent that
+never saw the session; if its summary of what the change does differs from
+what you set out to build, that difference is the first finding. Say it returns four things.
 Two are noise. Two are real: a list query with no limit, and a response that
 spreads a database row straight into JSON, which will publish the next column
 anyone adds to that table. Ten minutes to fix both.
@@ -118,7 +128,11 @@ anyone adds to that table. Ten minutes to fix both.
 
 Run this when the feature touches access control, money, or personal data.
 
-It finds what you cannot, because you already know what you meant. Here: the
+It finds what you cannot, because you already know what you meant. The
+attack itself runs in a fresh context, a reviewer subagent that has read the
+code and the invariants but not the conversation, so it does not know what you
+meant either. The agent you have been working with then checks each finding
+against the code before showing it to you. Here: the
 share endpoint verifies you are signed in and verifies the document exists, but
 a signed-in stranger can share a document they do not own. Authentication
 checked, authorization skipped. That is the most common real breach in this
@@ -243,7 +257,8 @@ of what your codebases have taught you.
 
 | Moment | Cost | What runs |
 |---|---|---|
-| While typing | free | Cursor rules shaping the output |
+| While typing | free | agent rules shaping the output |
+| End of each agent turn | under a second | boundaries and stack on changed files; the agent fixes what they block before you look |
 | Every commit | ~4s | secrets, boundaries, stack, ratchet (report only), staged lint |
 | Every push | ~40s | types, lint, unit tests |
 | Pull request | minutes, elsewhere | full suite, semgrep, RLS audit, build, e2e |
@@ -279,6 +294,7 @@ The branch loop runs from Cursor chat:
 | `/offline` | after changing the offline path: prove queued work arrives exactly once |
 | `/perf` | once to set up measuring, then when something feels slow |
 | `/monitor` | once per app, before real users: Sentry, verified on a preview |
+| `/match` | you have a Figma frame or a screenshot: build to it, detail by detail |
 
 The same thing by hand, if you are in a terminal anyway:
 

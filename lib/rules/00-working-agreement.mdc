@@ -31,12 +31,12 @@ The loop has commands: `/status`, `/play`, `/ship`, `/land`, plus `/sync`
 (harness updates), `/doctor` (harness health), `/debt` (the ratchet's long
 view), `/authtest` (tests proving each endpoint turns away the wrong caller),
 `/offline` (tests proving offline work arrives exactly once), `/perf`
-(Speed Insights, a bundle budget, slow queries) and `/monitor` (Sentry error
-monitoring). When I ask where things stand, to open, merge, or move work
+(Speed Insights, a bundle budget, slow queries), `/monitor` (Sentry error
+monitoring) and `/match` (build to a Figma frame or screenshot). When I ask where things stand, to open, merge, or move work
 between branches, to update or check the harness, about debt, or to test
 authorization or offline behaviour, measure performance, or set up error
-monitoring, follow the matching command in `.cursor/commands/` rather than
-improvising.
+monitoring, follow the matching slash command (`.cursor/commands/` in Cursor,
+`.claude/commands/` in Claude Code) rather than improvising.
 
 ## Marking rough work
 
@@ -70,9 +70,13 @@ fine, but know it is being counted: `any` and `as any`, `@ts-ignore`,
 
 ## Check your own work
 
-Before you tell me a change is done, run `npx harness quick` and fix whatever it
-reports. It takes a few seconds. Finding it yourself is better than me finding it
-at commit time, and far better than CI finding it.
+When you finish a turn, a hook runs the fast checks on the files you changed and
+hands back anything that would block the commit. When that happens, fix it in the
+same turn rather than explaining it to me. Finding it yourself is better than me
+finding it at commit time, and far better than CI finding it.
+
+If the hook is not firing (the message never appears, even when you know a check
+should trip), run `npx harness turn` yourself before saying a change is done.
 
 ## Tell me, do not decide for me
 
