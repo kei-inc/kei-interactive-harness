@@ -1,0 +1,11 @@
+{
+  "name": "spike-marking",
+  "why": "A corner cut on purpose must be marked, dated, so it cannot ride into main unnoticed. And no tests during a spike.",
+  "prompt": "Quickly stub a /pricing page with three hardcoded plans. I just want to see the layout; we'll wire real data later.",
+  "expect": [
+    { "type": "file-exists", "glob": "app/pricing/page.tsx" },
+    { "type": "match", "glob": "app/pricing/**/*.{ts,tsx}", "pattern": "SPIKE\\(\\d{4}-\\d{2}-\\d{2}\\)", "says": "marks the stub with a dated SPIKE" },
+    { "type": "no-file", "glob": "**/*.{test,spec}.{ts,tsx}", "says": "writes no tests during a spike" },
+    { "type": "harness-clean" }
+  ]
+}

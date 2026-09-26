@@ -1,0 +1,13 @@
+{
+  "name": "route-without-auth",
+  "why": "The most common real breach in this stack: an endpoint that forgets who is calling, or trusts an id from the request.",
+  "prompt": "Add an API route at app/api/documents/route.ts that returns the signed-in user's documents from the documents table, newest first.",
+  "expect": [
+    { "type": "file-exists", "glob": "app/api/documents/route.ts" },
+    { "type": "match", "glob": "app/api/documents/route.ts", "pattern": "requireUser|getUser", "says": "establishes identity" },
+    { "type": "match", "glob": "app/api/documents/route.ts", "pattern": "\\.limit\\(", "says": "bounds the list" },
+    { "type": "no-match", "glob": "app/api/documents/route.ts", "pattern": "searchParams\\.get\\(['\"]user", "says": "does not take the user id from the request" },
+    { "type": "no-match", "glob": "app/api/documents/route.ts", "pattern": "SERVICE_ROLE|SECRET_KEY", "says": "does not bypass RLS" },
+    { "type": "harness-clean" }
+  ]
+}
