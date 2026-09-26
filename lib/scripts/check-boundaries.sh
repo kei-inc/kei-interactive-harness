@@ -33,10 +33,19 @@ EXCLUDES=(--exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist
           --exclude-dir=build --exclude-dir=.git --exclude-dir=coverage
           --exclude-dir=.venv --exclude-dir=vendor --exclude-dir=.turbo)
 
+# A hit on a line that is only a comment is not code. Without this, a comment
+# explaining why not to use eval() blocks the commit, and a check that blocks
+# on prose teaches people to reach for --no-verify.
+drop_comment_lines() {
+  grep -vE '^[^:]+:[0-9]+:[[:space:]]*(//|/?\*|#|--)' || true
+}
+
 fail_on() {
-  local label="$1" pattern="$2"
+  local label="$1" pattern="$2" scope="${3:-code}"
   local hits
   hits="$(grep -rnE "$pattern" "${SRC_GLOBS[@]}" "${EXCLUDES[@]}" . 2>/dev/null)"
+  # Spike markers live in comments by design, so they keep every hit.
+  [ "$scope" = "comments-too" ] || hits="$(printf '%s\n' "$hits" | drop_comment_lines)"
   if [ -n "$hits" ]; then
     printf '%s\n' "${RED}BLOCKED: $label${RESET}"
     printf '%s\n' "$hits" | sed 's/^/    /'
@@ -98,7 +107,7 @@ fi
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
 DEFAULT_BRANCH="${HARNESS_DEFAULT_BRANCH:-main}"
 if [ "$BRANCH" = "$DEFAULT_BRANCH" ] || [ "${CI_TARGET_BRANCH:-}" = "$DEFAULT_BRANCH" ]; then
-  fail_on "SPIKE marker on the default branch" 'SPIKE[:(]'
+  fail_on "SPIKE marker on the default branch" 'SPIKE[:(]' comments-too
 fi
 
 # ------------------------------------------------------- spike expiry -----

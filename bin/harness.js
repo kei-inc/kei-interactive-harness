@@ -615,8 +615,9 @@ case "\$cmd" in
   grants)     exec bash "\$HARNESS_LIB/scripts/grants.sh" "\$@" ;;
   migrations) exec bash "\$HARNESS_LIB/scripts/check-migrations.sh" "\$@" ;;
   semgrep)    exec bash "\$HARNESS_LIB/scripts/semgrep.sh" "\$@" ;;
+  spikes)     exec bash "\$HARNESS_LIB/scripts/spikes.sh" "\$@" ;;
   ratchet)    exec bash "\$HARNESS_LIB/scripts/ratchet.sh" "\$@" ;;
-  *) echo "usage: harness/run.sh <quick|check|full|boundaries|stack|rls|grants|migrations|semgrep|ratchet>"; exit 2 ;;
+  *) echo "usage: harness/run.sh <quick|check|full|boundaries|stack|rls|grants|migrations|semgrep|spikes|ratchet>"; exit 2 ;;
 esac
 `, true);
   const pairs = [
@@ -692,6 +693,7 @@ switch (cmd) {
   case 'grants': run('grants.sh', rest); break;
   case 'migrations': run('check-migrations.sh', rest); break;
   case 'semgrep': run('semgrep.sh', rest); break;
+  case 'spikes': run('spikes.sh', rest); break;
   case 'run': runScript(rest[0]); break;
 
   case 'lib': console.log(LIB); break;
@@ -718,6 +720,7 @@ switch (cmd) {
     ratchet --new   only what this branch added
     ratchet --goals distance to your targets
     boundaries      the non-negotiables
+    spikes          every SPIKE marker, oldest first (--strict fails if any)
     lib             print the package lib path (for CI)
     stack           Next.js, Supabase, Cloudflare specifics
     rls             audit the live database perimeter

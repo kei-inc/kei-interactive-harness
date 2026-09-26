@@ -38,7 +38,7 @@ stop and show me the files.
 Check the two things CI enforces on the way into main:
 
 ```
-grep -rnE "SPIKE[:(]" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.mjs" --include="*.py" --exclude-dir=node_modules --exclude-dir=.next .
+npx harness spikes
 npx harness ratchet --check
 ```
 

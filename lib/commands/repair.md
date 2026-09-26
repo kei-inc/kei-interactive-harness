@@ -49,7 +49,7 @@ happening and the ones generic linters miss.
 ## Stage 4. The spike inventory
 
 ```
-grep -rnE "SPIKE[:(]" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.py" .
+npx harness spikes
 ```
 
 For each marker: is this still exploratory, or has it settled and just not been

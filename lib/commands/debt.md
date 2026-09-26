@@ -12,6 +12,7 @@ Use `pnpm exec harness` if the project has a `pnpm-lock.yaml`, otherwise
 ```
 npx harness ratchet --goals
 npx harness ratchet --check
+npx harness spikes
 sort -t'|' -k3 -nr .harness/ratchet.txt
 ```
 
@@ -25,7 +26,7 @@ holds my targets; it is mine to edit.
    line for the tracked ones together.
 2. **Where it lives.** For each enforced metric that is off its goal, the three
    files carrying the most, with counts.
-3. **Spikes.** Every `SPIKE(` marker with its age in days, oldest first. Past
+3. **Spikes.** Every marker from `harness spikes`, with its age, oldest first. Past
    thirty days it is debt, not exploration; say which of those look settled
    enough to clear.
 4. **Cheap wins.** Up to three things that could be fixed in a small diff
