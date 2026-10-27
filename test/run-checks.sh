@@ -140,6 +140,24 @@ mkdir -p "$REPO/.harness"; printf 'HARNESS_DISABLE="turn"\n' > "$REPO/.harness/c
 printf 'export const run = (s: string) => eval(s)\n' > "$REPO/a.ts"
 expect "HARNESS_DISABLE=turn switches it off" 0 turn_with '{}' $T --agent claude
 
+echo "route handlers"
+K="bash $LIB/scripts/check-stack.sh"
+
+REPO="$(new_repo routes)"
+mkdir -p "$REPO/app/api/x" "$REPO/app/.well-known/workflow/v1/flow"
+printf 'export async function GET() { await requireUser(); }\n' > "$REPO/app/api/x/route.ts"
+printf 'export const POST = handler\n' > "$REPO/app/.well-known/workflow/v1/flow/route.js"
+expect "unchecked generated route blocks" 1 $K
+expect_out "it is named" 'no identity check: app/\.well-known/workflow/v1/flow/route\.js'
+mkdir -p "$REPO/.harness"
+printf 'app/.well-known/workflow/\n' > "$REPO/.harness/allow-public-routes.txt"
+expect "an allowlist entry with no reason does not exempt" 1 $K
+printf '# generated\napp/.well-known/workflow/ queue deliveries are signed\n' > "$REPO/.harness/allow-public-routes.txt"
+expect "an allowlisted prefix with a reason passes" 0 $K
+mkdir -p "$REPO/app/api/open"
+printf 'export const GET = handler\n' > "$REPO/app/api/open/route.ts"
+expect "routes outside the prefix still block" 1 $K
+
 echo "ratchet"
 R="bash $LIB/scripts/ratchet.sh"
 

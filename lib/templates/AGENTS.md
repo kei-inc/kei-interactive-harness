@@ -148,7 +148,7 @@ apply everywhere.
 | *(Supabase)* A migration creating a table without RLS | Grants, `enable row level security`, and policies, as one unit in the same migration |
 | *(Supabase)* A created table with no grant | Grant only the roles that need it, or mark the migration `-- @no-data-api` |
 | *(Supabase)* The service role or secret key outside `server-only` files | `import 'server-only'` at the top of any file that touches it |
-| A `route.ts` or `"use server"` file with no identity check | Call `requireUser()` first, or write `// @public-route` / `// @public-action` with a reason |
+| A `route.ts` or `"use server"` file with no identity check | Call `requireUser()` first, or write `// @public-route` / `// @public-action` with a reason (generated routes: `.harness/allow-public-routes.txt`) |
 | *(Supabase)* `getSession()` in server code | `getUser()`, or `// @allow-getsession` with a reason |
 | Caching in a file that touches user identity | Put the user or tenant id in the cache key, then `// @cache-reviewed` |
 | A secret-looking name behind `NEXT_PUBLIC_` | Server env only; if it is genuinely public, list it in `.harness/allow-public-env.txt` |

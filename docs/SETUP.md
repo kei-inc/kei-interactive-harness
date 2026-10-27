@@ -348,6 +348,16 @@ which is good hygiene for a contact form or webhook, or turn the checks off:
 HARNESS_DISABLE="route-handlers server-actions"
 ```
 
+**If a framework generates route files** (Vercel Workflow writes
+`app/.well-known/workflow/v1/*/route.js` on every dev and build), they cannot
+carry a comment. List the directory in `.harness/allow-public-routes.txt`, one
+path prefix per line followed by the reason it is safe. An entry with no
+reason exempts nothing.
+
+```
+src/app/.well-known/workflow/ Vercel Queues deliveries, signed and verified by the workflow runtime
+```
+
 **If the project uses a different auth library** (Clerk, NextAuth, Auth.js),
 add its function name so the route and action checks recognize it:
 

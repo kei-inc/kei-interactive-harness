@@ -87,7 +87,23 @@ if ! disabled route-handlers; then
 ROUTE_FILES="$(find . \( -name node_modules -o -name .next -o -name .git -o -name .turbo -o -name dist \) -prune -o \
   -type f -path '*/app/*' \( -name 'route.ts' -o -name 'route.tsx' -o -name 'route.js' -o -name 'route.mjs' \) -print 2>/dev/null \
   | sed 's|^\./||' || true)"
+# Generated routes (a framework's .well-known handlers) cannot carry a
+# @public-route comment, so they are listed in .harness/allow-public-routes.txt
+# instead: a path prefix, then the reason it is safe. No reason, no exemption.
+ROUTE_ALLOW=".harness/allow-public-routes.txt"
+route_allowed() {
+  [ -f "$ROUTE_ALLOW" ] || return 1
+  local prefix reason
+  while read -r prefix reason; do
+    [ -z "$prefix" ] && continue
+    case "$prefix" in \#*) continue ;; esac
+    [ -z "$reason" ] && continue
+    case "$1" in "$prefix"*) return 0 ;; esac
+  done < "$ROUTE_ALLOW"
+  return 1
+}
 for f in $ROUTE_FILES; do
+  route_allowed "$f" && continue
   if ! grep -qE "$AUTH_RE|@public-route" "$f"; then
     block "route handler with no identity check: $f"
     printf '%s\n' "    Add an auth check, or write // @public-route with a reason."
