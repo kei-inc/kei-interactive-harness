@@ -140,6 +140,21 @@ mkdir -p "$REPO/.harness"; printf 'HARNESS_DISABLE="turn"\n' > "$REPO/.harness/c
 printf 'export const run = (s: string) => eval(s)\n' > "$REPO/a.ts"
 expect "HARNESS_DISABLE=turn switches it off" 0 turn_with '{}' $T --agent claude
 
+echo "ratchet"
+R="bash $LIB/scripts/ratchet.sh"
+
+REPO="$(new_repo ratchet-ignored)"
+printf 'export const a = 1 as any\n' > "$REPO/a.ts"
+commit_all
+expect "baseline written" 0 $R --accept
+mkdir -p "$REPO/gen"; printf '*\n' > "$REPO/gen/.gitignore"
+printf '// eslint-disable\nexport const g = 1 as any\n' > "$REPO/gen/route.js"
+expect "a gitignored generated file is not counted" 0 $R --check
+expect_no_out "ignored file absent from the report" 'gen/route\.js'
+printf 'export const b = 1 as any\n' > "$REPO/b.ts"
+expect "an untracked, unignored file still counts" 1 $R --check
+expect_out "the new file is named" 'b\.ts'
+
 echo
 if [ "$FAILN" -eq 0 ]; then echo "all $PASS passed"; exit 0; fi
 echo "$FAILN failed, $PASS passed"; exit 1

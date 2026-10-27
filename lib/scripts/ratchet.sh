@@ -101,13 +101,26 @@ metric_pattern() {
   for e in "${METRICS[@]}"; do [ "${e%%|*}" = "$1" ] && { echo "${e#*|}"; return; }; done
 }
 
+# Files git ignores are generated or local (framework route stubs, build
+# output under an unusual name). They come and go with the dev server, so
+# counting them makes the baseline flap. Tracked files are never dropped.
+drop_ignored() {
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then cat; return; fi
+  local files ignored
+  files="$(cat)"
+  [ -z "$files" ] && return
+  ignored="$(printf '%s\n' "$files" | sort -u | git check-ignore --stdin 2>/dev/null || true)"
+  if [ -z "$ignored" ]; then printf '%s\n' "$files"; return; fi
+  printf '%s\n' "$files" | grep -vxF -f <(printf '%s\n' "$ignored") || true
+}
+
 # metric|file|count, one line each, sorted and deterministic so the file diffs
 # cleanly and does not become a merge-conflict magnet.
 scan() {
   for e in "${METRICS[@]}"; do
     local label="${e%%|*}" pattern="${e#*|}"
     grep -rnoE "$pattern" "${SRC_GLOBS[@]}" "${EXCLUDES[@]}" . 2>/dev/null \
-      | cut -d: -f1 | sed 's|^\./||' | sort | uniq -c \
+      | cut -d: -f1 | sed 's|^\./||' | drop_ignored | sort | uniq -c \
       | awk -v m="$label" '{print m"|"$2"|"$1}'
   done | sort
 }
